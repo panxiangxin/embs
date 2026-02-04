@@ -152,6 +152,7 @@ class ItemSearchIn(BaseModel):
     candidate_ids: list[str] | None = None
     config: SearchConfigIn = Field(default_factory=SearchConfigIn)
     debug: bool = False
+    pos_backend: str = "hanlp"
 
 
 class ScoreTopNIn(BaseModel):
@@ -162,6 +163,7 @@ class ScoreTopNIn(BaseModel):
     top_n: int = Field(default=10, ge=1)
     debug: bool = False
     config: SearchConfigIn = Field(default_factory=SearchConfigIn)
+    pos_backend: str = "hanlp"
 
 
 @app.post("/v1/items/load")
@@ -212,11 +214,12 @@ def item_search(payload: ItemSearchIn) -> JSONResponse:
         config=cfg,
         debug=payload.debug,
         candidate_ids=tuple(payload.candidate_ids) if payload.candidate_ids is not None else None,
+        pos_backend=payload.pos_backend,
     )
 
     try:
         res = engine.search(req)
-    except RuntimeError as e:
+    except (RuntimeError, ValueError) as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     def _item_out(it):
@@ -281,11 +284,12 @@ def item_search_topn(payload: ScoreTopNIn) -> JSONResponse:
         config=cfg,
         debug=payload.debug,
         candidate_ids=tuple(item_ids),
+        pos_backend=payload.pos_backend,
     )
 
     try:
         res = engine.search(req)
-    except RuntimeError as e:
+    except (RuntimeError, ValueError) as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     def _item_out(it):

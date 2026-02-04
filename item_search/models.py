@@ -72,6 +72,7 @@ class SearchConfig:
 
 
 SearchStatus = Literal["ACCEPT", "CLARIFY", "REJECT"]
+PosBackend = Literal["hanlp", "jieba"]
 
 
 @dataclass(frozen=True)
@@ -118,3 +119,4 @@ class SearchRequest:
     config: SearchConfig = field(default_factory=SearchConfig)
     debug: bool = False
     candidate_ids: tuple[str, ...] | None = None
+    pos_backend: PosBackend = "hanlp"

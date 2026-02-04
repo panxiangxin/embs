@@ -5,6 +5,7 @@ const STORAGE = {
   contextMode: "item-finder::contextMode",
   config: "item-finder::config",
   debug: "item-finder::debug",
+  posBackend: "item-finder::posBackend",
   preset: "item-finder::preset",
 };
 
@@ -220,6 +221,7 @@ const tauMarginVal = $("tauMarginVal");
 const tauMarginNoNn = $("tauMarginNoNn");
 const tauMarginNoNnVal = $("tauMarginNoNnVal");
 
+const posBackendEl = $("posBackend");
 const debugToggle = $("debugToggle");
 const searchBtn = $("searchBtn");
 const queryInput = $("queryInput");
@@ -614,6 +616,9 @@ async function runSearch() {
   const q = queryInput.value.trim();
   if (!q) return;
 
+  const pos_backend = String(posBackendEl.value || "hanlp").trim().toLowerCase();
+  saveStorage(STORAGE.posBackend, pos_backend);
+
   const cfg = readConfigFromUI();
   const debug = debugToggle.checked;
   saveStorage(STORAGE.debug, debug ? "1" : "0");
@@ -639,6 +644,7 @@ async function runSearch() {
         debug,
         candidate_ids,
         config: cfg,
+        pos_backend,
       }),
     });
     const data = await resp.json().catch(() => ({}));
@@ -726,6 +732,9 @@ function init() {
 
   const savedDebug = loadStorage(STORAGE.debug, "0");
   debugToggle.checked = savedDebug === "1";
+
+  const savedPos = loadStorage(STORAGE.posBackend, "hanlp");
+  posBackendEl.value = savedPos === "jieba" ? "jieba" : "hanlp";
 
   const preset = loadStorage(STORAGE.preset, "balanced");
   presetSelect.value = PRESETS[preset] ? preset : "balanced";
@@ -828,6 +837,10 @@ queryInput.addEventListener("keydown", (e) => {
 apiBaseEl.addEventListener("change", () => {
   saveStorage(STORAGE.apiBase, apiBaseEl.value.trim());
   ping();
+});
+
+posBackendEl.addEventListener("change", () => {
+  saveStorage(STORAGE.posBackend, String(posBackendEl.value || "hanlp"));
 });
 
 init();

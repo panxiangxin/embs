@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 from .models import ParsedQuery, ParsedToken
 from .normalize import Normalizer
@@ -10,8 +11,6 @@ from .normalize import Normalizer
 class PosVocab:
     known_nouns: set[str]
     known_desc: set[str]
-
-POS_API_URL = "http://127.0.0.1:32123/analyze"
 
 
 STOP_TOKENS: set[str] = {
@@ -44,6 +43,61 @@ STOP_TOKENS: set[str] = {
     "附近",
 }
 
+_hanlp_pos = None
+_hanlp_pipelines: dict[str, object] = {}
+
+
+def _get_hanlp_pipeline(granularity: str | None) -> object:
+    import hanlp
+
+    global _hanlp_pos, _hanlp_pipelines
+    key = (granularity or "").strip().lower()
+    if key in ("fine", "细分"):
+        key = "fine"
+    elif key in ("coarse", "粗分", ""):
+        key = "coarse"
+    else:
+        raise ValueError("granularity仅支持 coarse 或 fine")
+
+    if _hanlp_pos is None:
+        _hanlp_pos = hanlp.load(hanlp.pretrained.pos.CTB9_POS_ELECTRA_SMALL)
+
+    pipeline = _hanlp_pipelines.get(key)
+    if pipeline is None:
+        tok = hanlp.load(
+            hanlp.pretrained.tok.COARSE_ELECTRA_SMALL_ZH
+            if key == "coarse"
+            else hanlp.pretrained.tok.FINE_ELECTRA_SMALL_ZH
+        )
+        pipeline = (
+            hanlp.pipeline()
+            .append(tok, output_key="tok")
+            .append(_hanlp_pos, input_key="tok", output_key="pos")
+        )
+        _hanlp_pipelines[key] = pipeline
+
+    return pipeline
+
+
+def _analyze_with_hanlp(text: str, granularity: str | None = None) -> tuple[list[str], list[str]]:
+    raw = (text or "").strip()
+    if not raw:
+        raise ValueError("text不能为空")
+    doc = _get_hanlp_pipeline(granularity or "coarse")(raw)
+    words = doc.get("tok") or []
+    flags = doc.get("pos") or []
+    return list(words), list(flags)
+
+
+def _analyze_with_jieba(text: str) -> tuple[list[str], list[str]]:
+    raw = (text or "").strip()
+    if not raw:
+        raise ValueError("text不能为空")
+    from jieba import posseg
+
+    words = list(posseg.cut(raw))
+    return [w.word for w in words], [w.flag for w in words]
+
 
 def _is_noun_flag(flag: str) -> bool:
     if not flag:
@@ -71,26 +125,24 @@ def _is_adj_flag(flag: str) -> bool:
     return False
 
 
-def parse_query(text: str, normalizer: Normalizer, vocab: PosVocab | None = None) -> ParsedQuery:
-    import json
-    import urllib.request
-
+def parse_query(
+    text: str,
+    normalizer: Normalizer,
+    vocab: PosVocab | None = None,
+    pos_backend: Literal["hanlp", "jieba"] = "hanlp",
+) -> ParsedQuery:
     raw = text or ""
     tokens: list[ParsedToken] = []
     nn: list[str] = []
     jj: list[str] = []
 
-    req = urllib.request.Request(
-        POS_API_URL,
-        data=json.dumps({"text": raw,"granularity":"fine"}).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=5) as resp:
-        payload = json.loads(resp.read().decode("utf-8"))
-
-    words = payload.get("tokens") or []
-    flags = payload.get("pos") or []
+    key = (pos_backend or "").strip().lower()
+    if key == "jieba":
+        words, flags = _analyze_with_jieba(raw)
+    elif key == "hanlp" or not key:
+        words, flags = _analyze_with_hanlp(raw, granularity="fine")
+    else:
+        raise ValueError("pos_backend仅支持 hanlp 或 jieba")
     for w, flag in zip(words, flags):
         t = normalizer.norm(w)
         if not t or t in STOP_TOKENS:

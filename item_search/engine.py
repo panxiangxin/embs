@@ -280,7 +280,7 @@ class ItemSearchEngine:
             raise RuntimeError("No items loaded. Call load_items() or provide items via API.")
         return self._index
 
-    def parse(self, query: str) -> ParsedQuery:
+    def parse(self, query: str, pos_backend: str = "hanlp") -> ParsedQuery:
         idx = self._ensure_index()
 
         # POS vocab from current items
@@ -296,13 +296,13 @@ class ItemSearchEngine:
 
         known_desc = set(idx.desc_label_to_idx.keys())
         vocab = PosVocab(known_nouns=known_nouns, known_desc=known_desc)
-        return parse_query(query, self._normalizer, vocab=vocab)
+        return parse_query(query, self._normalizer, vocab=vocab, pos_backend=pos_backend)
 
     def search(self, req: SearchRequest) -> SearchResult:
         cfg: SearchConfig = req.config
         idx = self._ensure_index()
 
-        parsed = self.parse(req.query)
+        parsed = self.parse(req.query, pos_backend=req.pos_backend)
         valid_nns = [n for n in parsed.nn if not self._normalizer.is_generic_noun(n)]
         jjs = list(parsed.jj)
 
