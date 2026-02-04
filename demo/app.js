@@ -111,6 +111,13 @@ const DEFAULT_CONFIG = {
   recall_topn_name_vec: 50,
   recall_topm_desc_label: 50,
   enable_bm25: true,
+  heuristics: {
+    split_compounds: true,
+    split_max_len: 3,
+    head_nouns: ["车", "门", "箱", "塔"],
+    nn_suffix_match: true,
+    nn_suffix_boost_to: 0.95,
+  },
   thresholds: {
     accept_p_nn: 0.01,
     clarify_p_nn: 0.05,
@@ -220,6 +227,13 @@ const tauMargin = $("tauMargin");
 const tauMarginVal = $("tauMarginVal");
 const tauMarginNoNn = $("tauMarginNoNn");
 const tauMarginNoNnVal = $("tauMarginNoNnVal");
+
+const splitCompounds = $("splitCompounds");
+const splitMaxLen = $("splitMaxLen");
+const headNouns = $("headNouns");
+const nnSuffixMatch = $("nnSuffixMatch");
+const nnSuffixBoostTo = $("nnSuffixBoostTo");
+const nnSuffixBoostToVal = $("nnSuffixBoostToVal");
 
 const posBackendEl = $("posBackend");
 const debugToggle = $("debugToggle");
@@ -422,6 +436,13 @@ function applyPreset(name) {
   saveStorage(STORAGE.preset, name);
 }
 
+function parseHeadNouns(text, fallback) {
+  const raw = String(text || "").trim();
+  if (!raw) return Array.from(new Set(fallback || [])).filter(Boolean);
+  const parts = raw.split(/[,，、\s]+/g).map((s) => String(s || "").trim()).filter(Boolean);
+  return Array.from(new Set(parts));
+}
+
 function fillConfig(cfg) {
   topK.value = String(cfg.top_k ?? 5);
   topKVal.textContent = String(topK.value);
@@ -429,6 +450,13 @@ function fillConfig(cfg) {
   nnVecTopN.value = String(cfg.recall_topn_name_vec ?? 50);
   jjTopM.value = String(cfg.recall_topm_desc_label ?? 50);
   enableBm25.checked = Boolean(cfg.enable_bm25 ?? true);
+
+  splitCompounds.checked = Boolean(cfg.heuristics?.split_compounds ?? true);
+  splitMaxLen.value = String(cfg.heuristics?.split_max_len ?? DEFAULT_CONFIG.heuristics.split_max_len);
+  headNouns.value = (cfg.heuristics?.head_nouns || DEFAULT_CONFIG.heuristics.head_nouns).join(", ");
+  nnSuffixMatch.checked = Boolean(cfg.heuristics?.nn_suffix_match ?? true);
+  nnSuffixBoostTo.value = String(cfg.heuristics?.nn_suffix_boost_to ?? DEFAULT_CONFIG.heuristics.nn_suffix_boost_to);
+  nnSuffixBoostToVal.textContent = Number(nnSuffixBoostTo.value).toFixed(2);
 
   acceptPnn.value = String(cfg.thresholds?.accept_p_nn ?? 0.01);
   clarifyPnn.value = String(cfg.thresholds?.clarify_p_nn ?? 0.05);
@@ -448,12 +476,20 @@ function fillConfig(cfg) {
 }
 
 function readConfigFromUI() {
+  const head_nouns = parseHeadNouns(headNouns.value, DEFAULT_CONFIG.heuristics.head_nouns);
   const cfg = {
     top_k: clamp(Number(topK.value || 5) || 5, 1, 10),
     recall_topn_bm25: clamp(Number(bm25TopN.value || 0) || 0, 0, 5000),
     recall_topn_name_vec: clamp(Number(nnVecTopN.value || 0) || 0, 0, 5000),
     recall_topm_desc_label: clamp(Number(jjTopM.value || 0) || 0, 0, 5000),
     enable_bm25: Boolean(enableBm25.checked),
+    heuristics: {
+      split_compounds: Boolean(splitCompounds.checked),
+      split_max_len: clamp(Number(splitMaxLen.value || 3) || 3, 2, 12),
+      head_nouns,
+      nn_suffix_match: Boolean(nnSuffixMatch.checked),
+      nn_suffix_boost_to: clamp(Number(nnSuffixBoostTo.value || 0.95) || 0.95, 0, 1),
+    },
     thresholds: {
       accept_p_nn: clamp(Number(acceptPnn.value || 0.01) || 0.01, 0, 1),
       clarify_p_nn: clamp(Number(clarifyPnn.value || 0.05) || 0.05, 0, 1),
@@ -828,6 +864,7 @@ minCoverage.addEventListener("input", () => (minCoverageVal.textContent = Number
 minCoverageNoNn.addEventListener("input", () => (minCoverageNoNnVal.textContent = Number(minCoverageNoNn.value).toFixed(2)));
 tauMargin.addEventListener("input", () => (tauMarginVal.textContent = Number(tauMargin.value).toFixed(2)));
 tauMarginNoNn.addEventListener("input", () => (tauMarginNoNnVal.textContent = Number(tauMarginNoNn.value).toFixed(2)));
+nnSuffixBoostTo.addEventListener("input", () => (nnSuffixBoostToVal.textContent = Number(nnSuffixBoostTo.value).toFixed(2)));
 
 searchBtn.addEventListener("click", runSearch);
 queryInput.addEventListener("keydown", (e) => {

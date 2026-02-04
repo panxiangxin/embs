@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from .models import ParsedQuery, ParsedToken
+from .models import Heuristics, ParsedQuery, ParsedToken
 from .normalize import Normalizer
 
 
@@ -131,12 +131,15 @@ def parse_query(
     normalizer: Normalizer,
     vocab: PosVocab | None = None,
     pos_backend: Literal["hanlp", "jieba"] = "jieba",
+    heuristics: Heuristics | None = None,
 ) -> ParsedQuery:
     raw = text or ""
     tokens: list[ParsedToken] = []
     nn: list[str] = []
     jj: list[str] = []
 
+    heur = heuristics or Heuristics()
+    head_whitelist = {normalizer.norm(h) for h in (heur.head_nouns or ()) if normalizer.norm(h)}
     short_color_chars = {c[0] for c in normalizer.color_labels if c}
 
     key = (pos_backend or "").strip().lower()
@@ -153,7 +156,7 @@ def parse_query(
 
         # Heuristic: split "color+noun" compounds when noun is in vocab, e.g. "红车" -> ("红色","车").
         # This improves short queries and keeps latency low (no extra model calls).
-        if vocab and len(t) >= 2:
+        if vocab and heur.split_compounds and 2 <= len(t) <= max(2, int(heur.split_max_len)):
             split_done = False
             for c in short_color_chars:
                 if not t.startswith(c):
@@ -162,7 +165,7 @@ def parse_query(
                 if not tail:
                     continue
                 tail_n = normalizer.norm(tail)
-                if tail_n in vocab.known_nouns or tail_n in vocab.known_noun_suffixes:
+                if tail_n in vocab.known_nouns or (tail_n in head_whitelist and tail_n in vocab.known_noun_suffixes):
                     jj.append(normalizer.norm(c))
                     nn.append(tail_n)
                     tokens.append(ParsedToken(text=normalizer.norm(c), pos="JJ(split)"))

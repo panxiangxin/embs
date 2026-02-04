@@ -172,6 +172,38 @@
           </div>
 
           <div class="group">
+            <div class="group-title">Heuristics</div>
+            <label class="field row">
+              <span>split_compounds</span>
+              <input id="splitCompounds" type="checkbox" checked />
+              <div class="field-desc">将“红车/蓝门”拆成 <code>颜色</code> + <code>名词</code>（低成本，适合短 query）。</div>
+            </label>
+            <label class="field">
+              <span>split_max_len</span>
+              <input id="splitMaxLen" type="number" min="2" max="12" step="1" />
+              <div class="field-desc">只对长度 ≤ N 的 token 尝试拆分，避免误拆专名（如“红外/蓝牙”）。</div>
+            </label>
+            <label class="field">
+              <span>head_nouns</span>
+              <input id="headNouns" type="text" spellcheck="false" placeholder="车,门,箱,塔" />
+              <div class="field-desc">用于拆分与 NN 后缀加分的白名单（逗号/空格分隔）。</div>
+            </label>
+            <label class="field row">
+              <span>nn_suffix_match</span>
+              <input id="nnSuffixMatch" type="checkbox" checked />
+              <div class="field-desc">让 “车” 能强匹配 “卡车/货车/汽车”等未显式写“车”的 type。</div>
+            </label>
+            <label class="field">
+              <span>nn_suffix_boost_to</span>
+              <input id="nnSuffixBoostTo" type="range" min="0" max="1" step="0.01" />
+              <div class="field-hint"><code id="nnSuffixBoostToVal">0.95</code></div>
+              <div class="field-desc">
+                当命中白名单后缀时，把名词相似度至少提升到该值（越大越偏向“类型后缀”）。
+              </div>
+            </label>
+          </div>
+
+          <div class="group">
             <div class="group-title">
               p_spurious（越小越严格）
               <span class="tag">可校准</span>

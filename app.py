@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sentence_transformers import SentenceTransformer
 
 from item_search import Item, ItemSearchEngine, SearchConfig, SearchRequest as EngineSearchRequest
-from item_search.models import Thresholds, Weights
+from item_search.models import Heuristics, Thresholds, Weights
 
 MODEL_NAME = os.getenv("MODEL_NAME", "BAAI/bge-small-zh-v1.5")
 DEVICE = os.getenv("DEVICE", "cpu")
@@ -133,6 +133,17 @@ class WeightsIn(BaseModel):
     gamma_bm25: float = 0.1
 
 
+class HeuristicsIn(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    split_compounds: bool = True
+    split_max_len: int = Field(default=3, ge=2, le=12)
+    head_nouns: list[str] = Field(default_factory=lambda: ["车", "门", "箱", "塔"])
+
+    nn_suffix_match: bool = True
+    nn_suffix_boost_to: float = Field(default=0.95, ge=0.0, le=1.0)
+
+
 class SearchConfigIn(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -142,6 +153,7 @@ class SearchConfigIn(BaseModel):
     recall_topm_desc_label: int = 50
     thresholds: ThresholdsIn = Field(default_factory=ThresholdsIn)
     weights: WeightsIn = Field(default_factory=WeightsIn)
+    heuristics: HeuristicsIn = Field(default_factory=HeuristicsIn)
     enable_bm25: bool = True
 
 
@@ -207,6 +219,7 @@ def item_search(payload: ItemSearchIn) -> JSONResponse:
         recall_topm_desc_label=payload.config.recall_topm_desc_label,
         thresholds=Thresholds(**payload.config.thresholds.model_dump()),
         weights=Weights(**payload.config.weights.model_dump()),
+        heuristics=Heuristics(**{**payload.config.heuristics.model_dump(), "head_nouns": tuple(payload.config.heuristics.head_nouns)}),
         enable_bm25=payload.config.enable_bm25,
     )
     req = EngineSearchRequest(
@@ -277,6 +290,7 @@ def item_search_topn(payload: ScoreTopNIn) -> JSONResponse:
         recall_topm_desc_label=payload.config.recall_topm_desc_label,
         thresholds=Thresholds(**payload.config.thresholds.model_dump()),
         weights=Weights(**payload.config.weights.model_dump()),
+        heuristics=Heuristics(**{**payload.config.heuristics.model_dump(), "head_nouns": tuple(payload.config.heuristics.head_nouns)}),
         enable_bm25=payload.config.enable_bm25,
     )
     req = EngineSearchRequest(

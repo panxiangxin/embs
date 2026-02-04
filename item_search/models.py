@@ -38,6 +38,18 @@ class LoadItemsResult:
 
 
 @dataclass(frozen=True)
+class Heuristics:
+    # Compound split: "红车" -> ("红色", "车") to avoid losing attributes in short queries.
+    split_compounds: bool = True
+    split_max_len: int = 3
+    head_nouns: tuple[str, ...] = ("车", "门", "箱", "塔")
+
+    # NN suffix lexical boost: "车" should strongly match "卡车/货车/汽车" even if item.type doesn't include "车".
+    nn_suffix_match: bool = True
+    nn_suffix_boost_to: float = 0.95
+
+
+@dataclass(frozen=True)
 class Thresholds:
     accept_score: float = 0.55
     clarify_score: float = 0.45
@@ -68,6 +80,7 @@ class SearchConfig:
     recall_topm_desc_label: int = 50
     thresholds: Thresholds = field(default_factory=Thresholds)
     weights: Weights = field(default_factory=Weights)
+    heuristics: Heuristics = field(default_factory=Heuristics)
     enable_bm25: bool = True
 
 

@@ -8,6 +8,7 @@ import numpy as np
 
 from .bm25 import BM25Index
 from .models import (
+    Heuristics,
     Item,
     LoadItemsResult,
     MatchExplain,
@@ -315,20 +316,23 @@ class ItemSearchEngine:
             raise RuntimeError("No items loaded. Call load_items() or provide items via API.")
         return self._index
 
-    def parse(self, query: str, pos_backend: str = "jieba") -> ParsedQuery:
+    def parse(self, query: str, pos_backend: str = "jieba", heuristics: Heuristics | None = None) -> ParsedQuery:
         idx = self._ensure_index()
-        return parse_query(query, self._normalizer, vocab=idx.pos_vocab, pos_backend=pos_backend)
+        return parse_query(query, self._normalizer, vocab=idx.pos_vocab, pos_backend=pos_backend, heuristics=heuristics)
 
     def search(self, req: SearchRequest) -> SearchResult:
         cfg: SearchConfig = req.config
         idx = self._ensure_index()
 
-        parsed = self.parse(req.query, pos_backend=req.pos_backend)
+        parsed = self.parse(req.query, pos_backend=req.pos_backend, heuristics=cfg.heuristics)
         valid_nns = [n for n in parsed.nn if not self._normalizer.is_generic_noun(n)]
         jjs = list(parsed.jj)
         if not valid_nns and not jjs:
             decision = SearchDecision(status="REJECT", reason="empty_query")
             return SearchResult(decision=decision, parsed=parsed, best=None, alternatives=())
+
+        heur = cfg.heuristics
+        head_whitelist = {self._normalizer.norm(h) for h in (heur.head_nouns or ()) if self._normalizer.norm(h)}
 
         # Effective weights: don't penalize missing channels
         has_nn = bool(valid_nns)
@@ -452,16 +456,22 @@ class ItemSearchEngine:
 
                         # Lexical suffix match for head nouns: "车" should strongly match "卡车/货车/汽车".
                         # This improves short queries (e.g., "红车") even when type lists don't include the hypernym.
-                        lex_bi = None
-                        for li, phrase in enumerate(phrase_texts):
-                            if not phrase:
-                                continue
-                            if phrase == nn_text or phrase.endswith(nn_text):
-                                lex_bi = li
-                                break
-                        if lex_bi is not None and sim < 1.0:
-                            bi = int(lex_bi)
-                            sim = 1.0
+                        if heur.nn_suffix_match and nn_text in head_whitelist:
+                            lex_idx: list[int] = []
+                            for li, phrase in enumerate(phrase_texts):
+                                if not phrase:
+                                    continue
+                                if phrase == nn_text or phrase.endswith(nn_text):
+                                    lex_idx.append(li)
+                            if lex_idx:
+                                lex_idx_arr = np.asarray(lex_idx, dtype=np.int32)
+                                lex_best = int(lex_idx_arr[int(np.argmax(sims[lex_idx_arr]))])
+                                lex_sim = float(sims[lex_best])
+                                boost_to = float(max(0.0, min(1.0, heur.nn_suffix_boost_to)))
+                                lex_sim = max(lex_sim, boost_to)
+                                if lex_sim > sim:
+                                    bi = lex_best
+                                    sim = lex_sim
 
                         if sim > best_over_nns:
                             best_over_nns = sim
