@@ -11,6 +11,7 @@ from .normalize import Normalizer
 class PosVocab:
     known_nouns: set[str]
     known_desc: set[str]
+    known_noun_suffixes: set[str]
 
 
 STOP_TOKENS: set[str] = {
@@ -129,12 +130,14 @@ def parse_query(
     text: str,
     normalizer: Normalizer,
     vocab: PosVocab | None = None,
-    pos_backend: Literal["hanlp", "jieba"] = "hanlp",
+    pos_backend: Literal["hanlp", "jieba"] = "jieba",
 ) -> ParsedQuery:
     raw = text or ""
     tokens: list[ParsedToken] = []
     nn: list[str] = []
     jj: list[str] = []
+
+    short_color_chars = {c[0] for c in normalizer.color_labels if c}
 
     key = (pos_backend or "").strip().lower()
     if key == "jieba":
@@ -147,6 +150,28 @@ def parse_query(
         t = normalizer.norm(w)
         if not t or t in STOP_TOKENS:
             continue
+
+        # Heuristic: split "color+noun" compounds when noun is in vocab, e.g. "红车" -> ("红色","车").
+        # This improves short queries and keeps latency low (no extra model calls).
+        if vocab and len(t) >= 2:
+            split_done = False
+            for c in short_color_chars:
+                if not t.startswith(c):
+                    continue
+                tail = t[len(c) :]
+                if not tail:
+                    continue
+                tail_n = normalizer.norm(tail)
+                if tail_n in vocab.known_nouns or tail_n in vocab.known_noun_suffixes:
+                    jj.append(normalizer.norm(c))
+                    nn.append(tail_n)
+                    tokens.append(ParsedToken(text=normalizer.norm(c), pos="JJ(split)"))
+                    tokens.append(ParsedToken(text=tail_n, pos="NN(split)"))
+                    split_done = True
+                    break
+            if split_done:
+                continue
+
         flag = str(flag or "")
         tokens.append(ParsedToken(text=t, pos=flag))
 

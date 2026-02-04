@@ -40,6 +40,8 @@ curl.exe -X POST "http://127.0.0.1:8000/v1/items/load" `
 
 ## 3) 执行检索（debug 打开会带可解释信息/阈值相关指标）
 
+默认使用 `jieba` 做 POS（更快，适合低延迟）；也可传 `pos_backend:"hanlp"`（更准但更慢）。
+
 ```powershell
 curl.exe -X POST "http://127.0.0.1:8000/v1/item_search" `
   -H "Content-Type: application/json" `

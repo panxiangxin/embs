@@ -119,4 +119,4 @@ class SearchRequest:
     config: SearchConfig = field(default_factory=SearchConfig)
     debug: bool = False
     candidate_ids: tuple[str, ...] | None = None
-    pos_backend: PosBackend = "hanlp"
+    pos_backend: PosBackend = "jieba"

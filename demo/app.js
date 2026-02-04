@@ -616,7 +616,7 @@ async function runSearch() {
   const q = queryInput.value.trim();
   if (!q) return;
 
-  const pos_backend = String(posBackendEl.value || "hanlp").trim().toLowerCase();
+  const pos_backend = String(posBackendEl.value || "jieba").trim().toLowerCase();
   saveStorage(STORAGE.posBackend, pos_backend);
 
   const cfg = readConfigFromUI();
@@ -733,8 +733,8 @@ function init() {
   const savedDebug = loadStorage(STORAGE.debug, "0");
   debugToggle.checked = savedDebug === "1";
 
-  const savedPos = loadStorage(STORAGE.posBackend, "hanlp");
-  posBackendEl.value = savedPos === "jieba" ? "jieba" : "hanlp";
+  const savedPos = loadStorage(STORAGE.posBackend, "jieba");
+  posBackendEl.value = savedPos === "hanlp" ? "hanlp" : "jieba";
 
   const preset = loadStorage(STORAGE.preset, "balanced");
   presetSelect.value = PRESETS[preset] ? preset : "balanced";
@@ -840,7 +840,7 @@ apiBaseEl.addEventListener("change", () => {
 });
 
 posBackendEl.addEventListener("change", () => {
-  saveStorage(STORAGE.posBackend, String(posBackendEl.value || "hanlp"));
+  saveStorage(STORAGE.posBackend, String(posBackendEl.value || "jieba"));
 });
 
 init();

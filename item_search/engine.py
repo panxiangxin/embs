@@ -49,6 +49,7 @@ class _Index:
     items: tuple[_IndexedItem, ...]
     id_to_pos: dict[str, int]
     bm25: BM25Index | None
+    pos_vocab: PosVocab
     name_phrase_vectors: np.ndarray
     name_phrase_owner: np.ndarray  # phrase_idx -> item_pos
     item_name_vector: np.ndarray  # (item_count, dim)
@@ -248,6 +249,39 @@ class ItemSearchEngine:
         N = len(indexed) or 1
         desc_idf = {l: math.log((N + 1) / (c + 1)) + 1 for l, c in df.items()}
 
+        # POS vocab (cached): avoid per-query rebuilding for low latency.
+        import jieba
+
+        known_desc: set[str] = set(all_desc_labels)
+        for l in all_desc_labels:
+            if l.endswith("制") and len(l) > 1:
+                known_desc.add(l[:-1])
+            for tok in jieba.cut(l):
+                t = self._normalizer.norm(tok)
+                if t:
+                    known_desc.add(t)
+
+        known_nouns: set[str] = set()
+        for it in indexed:
+            for p in it.name_phrases:
+                if p:
+                    known_nouns.add(p)
+                for tok in jieba.cut(p):
+                    t = self._normalizer.norm(tok)
+                    if t:
+                        known_nouns.add(t)
+
+        known_noun_suffixes: set[str] = set()
+        for n in known_nouns:
+            if not n:
+                continue
+            if len(n) >= 1:
+                known_noun_suffixes.add(n[-1:])
+            if len(n) >= 2:
+                known_noun_suffixes.add(n[-2:])
+
+        pos_vocab = PosVocab(known_nouns=known_nouns, known_desc=known_desc, known_noun_suffixes=known_noun_suffixes)
+
         neg_name = build_neg_distribution(name_phrase_vecs)
         neg_desc = build_neg_distribution(desc_label_vecs)
 
@@ -255,6 +289,7 @@ class ItemSearchEngine:
             items=tuple(indexed),
             id_to_pos=id_to_pos,
             bm25=bm25,
+            pos_vocab=pos_vocab,
             name_phrase_vectors=name_phrase_vecs,
             name_phrase_owner=name_phrase_owner_arr,
             item_name_vector=item_name,
@@ -280,23 +315,9 @@ class ItemSearchEngine:
             raise RuntimeError("No items loaded. Call load_items() or provide items via API.")
         return self._index
 
-    def parse(self, query: str, pos_backend: str = "hanlp") -> ParsedQuery:
+    def parse(self, query: str, pos_backend: str = "jieba") -> ParsedQuery:
         idx = self._ensure_index()
-
-        # POS vocab from current items
-        import jieba
-
-        known_nouns: set[str] = set()
-        for it in idx.items:
-            for p in it.name_phrases:
-                for tok in jieba.cut(p):
-                    t = self._normalizer.norm(tok)
-                    if t:
-                        known_nouns.add(t)
-
-        known_desc = set(idx.desc_label_to_idx.keys())
-        vocab = PosVocab(known_nouns=known_nouns, known_desc=known_desc)
-        return parse_query(query, self._normalizer, vocab=vocab, pos_backend=pos_backend)
+        return parse_query(query, self._normalizer, vocab=idx.pos_vocab, pos_backend=pos_backend)
 
     def search(self, req: SearchRequest) -> SearchResult:
         cfg: SearchConfig = req.config
@@ -305,6 +326,26 @@ class ItemSearchEngine:
         parsed = self.parse(req.query, pos_backend=req.pos_backend)
         valid_nns = [n for n in parsed.nn if not self._normalizer.is_generic_noun(n)]
         jjs = list(parsed.jj)
+        if not valid_nns and not jjs:
+            decision = SearchDecision(status="REJECT", reason="empty_query")
+            return SearchResult(decision=decision, parsed=parsed, best=None, alternatives=())
+
+        # Effective weights: don't penalize missing channels
+        has_nn = bool(valid_nns)
+        has_jj = bool(jjs)
+        if has_nn and has_jj:
+            alpha = float(cfg.weights.alpha_nn)
+            beta = float(cfg.weights.beta_jj)
+            s = alpha + beta
+            if s > 0:
+                alpha_eff = alpha / s
+                beta_eff = beta / s
+            else:
+                alpha_eff, beta_eff = 0.5, 0.5
+        elif has_nn:
+            alpha_eff, beta_eff = 1.0, 0.0
+        else:
+            alpha_eff, beta_eff = 0.0, 1.0
 
         allowed_pos: set[int] | None = None
         if req.candidate_ids is not None:
@@ -400,17 +441,33 @@ class ItemSearchEngine:
                             base_offset = start
 
                     phrase_vecs = idx.name_phrase_vectors[phrase_indices]
+                    phrase_texts = item.name_phrases[base_offset : base_offset + int(phrase_vecs.shape[0])]
                     best_over_nns = 0.0
                     best_detail = None
                     for qi, qv in enumerate(nn_vecs):
+                        nn_text = valid_nns[qi]
                         sims = phrase_vecs @ qv
                         bi = int(np.argmax(sims))
                         sim = float(sims[bi])
+
+                        # Lexical suffix match for head nouns: "车" should strongly match "卡车/货车/汽车".
+                        # This improves short queries (e.g., "红车") even when type lists don't include the hypernym.
+                        lex_bi = None
+                        for li, phrase in enumerate(phrase_texts):
+                            if not phrase:
+                                continue
+                            if phrase == nn_text or phrase.endswith(nn_text):
+                                lex_bi = li
+                                break
+                        if lex_bi is not None and sim < 1.0:
+                            bi = int(lex_bi)
+                            sim = 1.0
+
                         if sim > best_over_nns:
                             best_over_nns = sim
                             local_idx = int(base_offset + bi)
                             best_detail = {
-                                "nn": valid_nns[qi],
+                                "nn": nn_text,
                                 "name_phrase": item.name_phrases[local_idx] if local_idx < len(item.name_phrases) else None,
                                 "sim": sim,
                             }
@@ -421,38 +478,52 @@ class ItemSearchEngine:
             s_nn_bm25 = bm25_norm_by_pos.get(p, 0.0)
             s_nn = max(s_nn_vec, cfg.weights.gamma_bm25 * s_nn_bm25)
 
+            jj_weight_sum = 0.0
             jj_used_sum = 0.0
+            jj_covered_weight_sum = 0.0
             jj_matches: list[dict] = []
-            covered = 0
-            if jjs and idx.desc_label_vectors.size and item.desc_labels:
-                item_labels = [l for l in item.desc_labels if l in idx.desc_label_to_idx]
-                label_vecs = idx.desc_label_vectors[[idx.desc_label_to_idx[l] for l in item_labels]]
+            item_labels = [l for l in item.desc_labels if l in idx.desc_label_to_idx]
+            label_vecs = (
+                idx.desc_label_vectors[[idx.desc_label_to_idx[l] for l in item_labels]]
+                if (jjs and idx.desc_label_vectors.size and item_labels)
+                else np.zeros((0, 0), np.float32)
+            )
+
+            if jjs:
                 for j_idx, j in enumerate(jjs):
                     qv = jj_vecs[j_idx]
+                    w = float(idx.desc_idf.get(j, 1.0)) * float(self._normalizer.type_coef(j))
+                    jj_weight_sum += w
+
                     sims = label_vecs @ qv if label_vecs.size else np.zeros((0,), np.float32)
                     if sims.size:
                         bi = int(np.argmax(sims))
                         sim = float(sims[bi])
-                        used = sim if sim >= tau_cover else 0.0
-                        if used > 0:
-                            covered += 1
-                        jj_used_sum += float(used)
-                        jj_matches.append(
-                            {
-                                "jj": j,
-                                "best_label": item_labels[bi] if bi < len(item_labels) else None,
-                                "sim": sim,
-                                "used": used,
-                                "w": 1.0,
-                            }
-                        )
+                        used = float(sim if sim >= tau_cover else 0.0)
+                        best_label = item_labels[bi] if bi < len(item_labels) else None
                     else:
-                        jj_matches.append({"jj": j, "best_label": None, "sim": 0.0, "used": 0.0, "w": 1.0})
+                        bi = -1
+                        sim = 0.0
+                        used = 0.0
+                        best_label = None
 
-            coverage = covered / max(len(jjs), 1)
-            s_jj = float(jj_used_sum / max(len(jjs), 1))
+                    if used > 0:
+                        jj_covered_weight_sum += w
+                    jj_used_sum += w * used
+                    jj_matches.append(
+                        {
+                            "jj": j,
+                            "best_label": best_label,
+                            "sim": float(sim),
+                            "used": float(used),
+                            "w": float(w),
+                        }
+                    )
 
-            total = cfg.weights.alpha_nn * s_nn + cfg.weights.beta_jj * s_jj
+            coverage = float(jj_covered_weight_sum / jj_weight_sum) if jj_weight_sum > 0 else 0.0
+            s_jj = float(jj_used_sum / jj_weight_sum) if jj_weight_sum > 0 else 0.0
+
+            total = alpha_eff * s_nn + beta_eff * s_jj
 
             scored.append((p, float(total), float(s_nn), float(s_nn_vec), float(s_nn_bm25), float(s_jj), nn_matches, jj_matches))
 
@@ -468,19 +539,76 @@ class ItemSearchEngine:
         s2 = top2[1] if top2 else 0.0
         margin_ratio = (s1 - s2) / max(abs(s1), 1e-6)
 
-        m_name_comparisons: int | None = None
-        if req.debug and valid_nns and idx.neg_name.samples:
+        th = cfg.thresholds
+
+        # Calibrated spurious-match probabilities (p_spurious) for gates.
+        # - NN gate: use name/type phrase similarity (vector), corrected for multiple comparisons.
+        # - JJ-only gate: multiply per-JJ spurious probabilities (strict by design).
+        p_nn_top1: float | None = None
+        if has_nn and idx.neg_name.samples:
             m_phrases = 0
             for p in cand_list:
-                m_phrases += len(idx.items[p].name_phrases)
+                it = idx.items[p]
+                if it.type_phrase_count > 0:
+                    m_phrases += max(1, int(it.type_phrase_count))
+                else:
+                    m_phrases += max(1, len(it.name_phrases))
             m_name_comparisons = max(1, m_phrases * max(1, len(valid_nns)))
+            p_nn_top1 = idx.neg_name.tail_p_max(float(top1[3]), m_name_comparisons)
 
-        th = cfg.thresholds
-        if s1 >= th.accept_score:
-            decision = SearchDecision(status="ACCEPT", reason="score_ge_accept")
-        elif s1 >= th.clarify_score:
-            decision = SearchDecision(status="CLARIFY", reason="score_ge_clarify")
+        p_jj_top1: float | None = None
+        if (not has_nn) and has_jj and idx.neg_desc.samples:
+            p_pos = int(top1[0])
+            m_labels = max(1, len(idx.items[p_pos].desc_labels))
+            p_prod = 1.0
+            any_used = False
+            for m in top1[7]:
+                if float(m.get("used") or 0.0) <= 0:
+                    continue
+                any_used = True
+                sim = float(m.get("sim") or 0.0)
+                p_prod *= max(1e-12, idx.neg_desc.tail_p_max(sim, m_labels))
+            p_jj_top1 = p_prod if any_used else 1.0
+
+        # Coverage from stored per-JJ weights.
+        cov_weight_sum = float(sum(float(m.get("w") or 0.0) for m in top1[7])) if has_jj else 0.0
+        cov_covered = float(sum(float(m.get("w") or 0.0) for m in top1[7] if float(m.get("used") or 0.0) > 0.0)) if has_jj else 0.0
+        coverage_top1 = float(cov_covered / cov_weight_sum) if cov_weight_sum > 0 else 0.0
+
+        # 1) Base decision from calibrated p_spurious when available; otherwise fall back to score thresholds.
+        if has_nn and p_nn_top1 is not None:
+            if p_nn_top1 <= th.accept_p_nn:
+                decision = SearchDecision(status="ACCEPT", reason="p_nn_le_accept")
+            elif p_nn_top1 <= th.clarify_p_nn:
+                decision = SearchDecision(status="CLARIFY", reason="p_nn_le_clarify")
+            else:
+                decision = SearchDecision(status="CLARIFY", reason="p_nn_gt_clarify")
+        elif (not has_nn) and p_jj_top1 is not None:
+            if p_jj_top1 <= th.accept_p_jj:
+                decision = SearchDecision(status="ACCEPT", reason="p_jj_le_accept")
+            elif p_jj_top1 <= th.clarify_p_jj:
+                decision = SearchDecision(status="CLARIFY", reason="p_jj_le_clarify")
+            else:
+                decision = SearchDecision(status="CLARIFY", reason="p_jj_gt_clarify")
         else:
+            if s1 >= th.accept_score:
+                decision = SearchDecision(status="ACCEPT", reason="score_ge_accept")
+            elif s1 >= th.clarify_score:
+                decision = SearchDecision(status="CLARIFY", reason="score_ge_clarify")
+            else:
+                decision = SearchDecision(status="REJECT", reason="score_lt_clarify")
+
+        # 2) Tighten ACCEPT with coverage + margin gates.
+        if decision.status == "ACCEPT":
+            min_cov = th.min_coverage if has_nn else th.min_coverage_no_nn
+            tau_margin = th.tau_margin if has_nn else th.tau_margin_no_nn
+            if has_jj and coverage_top1 < float(min_cov):
+                decision = SearchDecision(status="CLARIFY", reason=f"{decision.reason}+coverage_lt_min")
+            elif margin_ratio < float(tau_margin):
+                decision = SearchDecision(status="CLARIFY", reason=f"{decision.reason}+margin_lt_tau")
+
+        # 3) Hard floor: don't surface very low-score matches.
+        if decision.status in ("ACCEPT", "CLARIFY") and s1 < float(th.clarify_score):
             decision = SearchDecision(status="REJECT", reason="score_lt_clarify")
 
         # Build results (confidence as softmax probability among Top-K)
@@ -499,6 +627,17 @@ class ItemSearchEngine:
             conf = float(probs[rank]) if rank < probs.shape[0] else 0.0
             explain = None
             if req.debug:
+                m_name_comparisons: int | None = None
+                if valid_nns and idx.neg_name.samples:
+                    m_phrases = 0
+                    for p2 in cand_list:
+                        it2 = idx.items[p2]
+                        if it2.type_phrase_count > 0:
+                            m_phrases += max(1, int(it2.type_phrase_count))
+                        else:
+                            m_phrases += max(1, len(it2.name_phrases))
+                    m_name_comparisons = max(1, m_phrases * max(1, len(valid_nns)))
+
                 p_nn_row = None
                 if m_name_comparisons is not None and idx.neg_name.samples:
                     p_nn_row = idx.neg_name.tail_p_max(float(s_nn_vec), m_name_comparisons)
@@ -522,7 +661,14 @@ class ItemSearchEngine:
                     s_nn_vec=s_nn_vec,
                     s_nn_bm25=s_nn_bm25,
                     s_jj=s_jj,
-                    coverage=float(sum(1 for m in jj_matches if (m.get("used") or 0.0) > 0) / max(len(jj_matches), 1)),
+                    coverage=float(
+                        (
+                            sum(float(m.get("w") or 0.0) for m in jj_matches if float(m.get("used") or 0.0) > 0.0)
+                            / max(1e-12, sum(float(m.get("w") or 0.0) for m in jj_matches))
+                        )
+                        if jj_matches
+                        else 0.0
+                    ),
                     matched_jj=tuple(jj_matches),
                     matched_nn=tuple(nn_matches),
                     margin_ratio=margin_ratio,

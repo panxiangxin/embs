@@ -152,7 +152,7 @@ class ItemSearchIn(BaseModel):
     candidate_ids: list[str] | None = None
     config: SearchConfigIn = Field(default_factory=SearchConfigIn)
     debug: bool = False
-    pos_backend: str = "hanlp"
+    pos_backend: str = "jieba"
 
 
 class ScoreTopNIn(BaseModel):
@@ -163,7 +163,7 @@ class ScoreTopNIn(BaseModel):
     top_n: int = Field(default=10, ge=1)
     debug: bool = False
     config: SearchConfigIn = Field(default_factory=SearchConfigIn)
-    pos_backend: str = "hanlp"
+    pos_backend: str = "jieba"
 
 
 @app.post("/v1/items/load")
