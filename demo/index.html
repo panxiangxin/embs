@@ -1,215 +1,350 @@
 <!doctype html>
-<html lang="zh">
+<html lang="zh-Hans">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Label Embedding 相似度检索 Demo</title>
+    <meta
+      name="description"
+      content="游戏内玩家自然语言查找物品：POS(JJ/NN) 拆分检索 + 可校准阈值（p_spurious）"
+    />
+    <title>Item Finder · JJ/NN</title>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=ZCOOL+XiaoWei&display=swap"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&family=ZCOOL+QingKe+HuangYou&display=swap"
       rel="stylesheet"
     />
+
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="grain"></div>
-    <header class="hero">
-      <div class="hero-top">
-        <span class="badge">Scene Retrieval Lab</span>
-        <div class="status">
-          <span class="dot" id="apiDot"></span>
-          <span id="apiStatus">API 未连接</span>
+    <div class="fx fx-grid" aria-hidden="true"></div>
+    <div class="fx fx-grain" aria-hidden="true"></div>
+
+    <header class="top">
+      <div class="brand">
+        <div class="mark" aria-hidden="true">
+          <div class="mark-core"></div>
+          <div class="mark-ring"></div>
+        </div>
+        <div class="brand-text">
+          <div class="kicker">INVENTORY / SCENE</div>
+          <h1>Item Finder</h1>
+          <div class="sub">
+            POS 拆分 <span class="sep">·</span> NN→名称/类型 <span class="sep">·</span> JJ→描述标签
+            <span class="sep">·</span> 阈值用 <code>p_spurious</code> 可校准
+          </div>
         </div>
       </div>
-      <h1>Label Embedding 相似度检索</h1>
-      <p class="subtitle">
-        复现论文中的“label embedding 做相似度搜索”流程：资产标签向量化 → 向量索引 →
-        目标描述检索。
-      </p>
-      <div class="hero-actions">
-        <label class="field">
-          <span>Embedding API</span>
-          <input
-            id="apiUrl"
-            type="text"
-            value="http://127.0.0.1:8000/v1/embeddings"
-          />
+
+      <div class="api">
+        <label class="field inline">
+          <span>API Base</span>
+          <input id="apiBase" type="text" spellcheck="false" value="http://127.0.0.1:8000" />
         </label>
-        <label class="field">
-          <span>模型</span>
-          <input id="modelName" type="text" value="BAAI/bge-small-zh-v1.5" />
-        </label>
-        <button id="checkApi" class="btn ghost">检查连接</button>
+        <button class="btn" id="pingBtn">Ping</button>
+        <div class="pill" id="apiPill">
+          <span class="dot" id="apiDot"></span>
+          <span id="apiText">offline</span>
+        </div>
       </div>
     </header>
 
-    <main class="layout">
-      <section class="panel">
+    <main class="grid">
+      <section class="panel span-2" aria-label="Dataset">
         <div class="panel-head">
-          <h2>结构化添加</h2>
-          <p>用表单添加/编辑资产，会自动同步到 JSON 与列表。</p>
+          <div>
+            <div class="panel-kicker">DATASET</div>
+            <h2>物品库（加载到 API）</h2>
+          </div>
+          <div class="panel-actions">
+            <button class="btn ghost" id="useSampleBtn">填入示例</button>
+            <button class="btn ghost" id="beautifyBtn">格式化</button>
+            <button class="btn primary" id="loadBtn">Load</button>
+            <button class="btn" id="exportBtn">Export</button>
+            <label class="btn">
+              Import
+              <input id="importFile" type="file" accept="application/json" hidden />
+            </label>
+          </div>
         </div>
-        <div class="form-grid">
-          <label class="field">
-            <span>资产 ID（可选）</span>
-            <input id="assetIdInput" type="text" placeholder="veh-03" />
-          </label>
-          <label class="field">
-            <span>资产名称</span>
-            <input id="assetNameInput" type="text" placeholder="红色皮卡 / 新" />
-          </label>
-        </div>
-        <div class="label-editor">
-          <label class="field">
-            <span>标签（回车或逗号添加）</span>
-            <input id="labelInput" type="text" placeholder="红色, 皮卡, 车辆" />
-          </label>
-          <button id="addLabelBtn" class="btn ghost small">添加标签</button>
-        </div>
-        <div class="label-chips" id="labelChips"></div>
-        <div class="vector-grid">
-          <div class="vector-group">
-            <span>位置 [x,y,z]</span>
-            <div class="vector-inputs">
-              <input id="locX" type="number" step="0.1" />
-              <input id="locY" type="number" step="0.1" />
-              <input id="locZ" type="number" step="0.1" />
+
+        <div class="split">
+          <div class="editor">
+            <div class="editor-head">
+              <div class="meta">
+                <div class="meta-row">
+                  <span class="meta-k">Local items</span>
+                  <span class="meta-v" id="localCount">0</span>
+                </div>
+                <div class="meta-row">
+                  <span class="meta-k">API items_loaded</span>
+                  <span class="meta-v" id="apiCount">0</span>
+                </div>
+              </div>
+              <div class="note" id="loadNote">提示：先 <code>Load</code> 再检索。</div>
             </div>
+            <textarea id="itemsJson" class="textarea" spellcheck="false"></textarea>
           </div>
-          <div class="vector-group">
-            <span>朝向 [x,y,z]</span>
-            <div class="vector-inputs">
-              <input id="rotX" type="number" step="1" />
-              <input id="rotY" type="number" step="1" />
-              <input id="rotZ" type="number" step="1" />
+
+          <div class="list">
+            <div class="list-head">
+              <div class="panel-kicker">PREVIEW</div>
+              <div class="list-title">当前物品（从 JSON 解析）</div>
+              <div class="list-sub">用于选择 <code>candidate_ids</code>（模拟背包/附近列表）。</div>
             </div>
-          </div>
-          <div class="vector-group">
-            <span>包围盒 [x,y,z]</span>
-            <div class="vector-inputs">
-              <input id="boxX" type="number" step="0.1" />
-              <input id="boxY" type="number" step="0.1" />
-              <input id="boxZ" type="number" step="0.1" />
+        <div class="list-tools">
+          <label class="field">
+            <span>Context</span>
+            <select id="contextMode">
+              <option value="all">All items</option>
+              <option value="selected">Selected IDs</option>
+            </select>
+            <div class="field-desc">
+              <div><code>All items</code>：全库检索（候选多，更依赖阈值）。</div>
+              <div><code>Selected IDs</code>：只在你勾选的物品里找（模拟“背包/附近物品列表”，更稳定）。</div>
             </div>
-          </div>
-          <div class="vector-group">
-            <span>掩体点</span>
-            <input id="coverPoints" type="number" step="1" min="0" />
-          </div>
-        </div>
-        <div class="btn-row">
-          <button id="saveAsset" class="btn primary">添加资产</button>
-          <button id="clearForm" class="btn ghost">清空表单</button>
-        </div>
-        <div class="note" id="formNote">提示：标签不能为空。</div>
-      </section>
-      <section class="panel">
-        <div class="panel-head">
-          <h2>自定义资产与标签</h2>
-          <p>粘贴 JSON 或导入文件，应用后会清空索引，需要重新构建。</p>
-        </div>
-        <textarea id="assetJson" rows="12" spellcheck="false"></textarea>
-        <div class="btn-row">
-          <button id="applyAssets" class="btn primary">应用并保存</button>
-          <button id="resetAssets" class="btn ghost">重置示例</button>
-          <button id="exportAssets" class="btn ghost">导出 JSON</button>
-          <label class="file-btn">
-            <input id="importAssets" type="file" accept="application/json" />
-            <span>导入文件</span>
           </label>
+          <div class="tiny-actions">
+            <button class="btn tiny" id="selectAllBtn">All</button>
+            <button class="btn tiny ghost" id="selectNoneBtn">None</button>
+          </div>
+            </div>
+            <div class="items" id="itemsList"></div>
+          </div>
         </div>
-        <div class="note" id="dataNote">
-          格式示例：[{ "id": "...", "name": "...", "labels": ["标签1","标签2"] }]
-        </div>
-      </section>
-      <section class="panel">
-        <div class="panel-head">
-          <h2>Step 1 · 资产与标签集合</h2>
-          <p>资产结构化 + 标签集合（可被检索的文本描述）</p>
-        </div>
-        <div class="asset-list" id="assetList"></div>
       </section>
 
-      <section class="panel">
+      <section class="panel" aria-label="Thresholds and config">
         <div class="panel-head">
-          <h2>Step 2 · 离线向量索引</h2>
-          <p>预先计算 label / entity embedding，并建立索引</p>
-        </div>
-        <div class="mode-switch">
-          <label>
-            <input type="radio" name="mode" value="label" checked />
-            <span>Label 级</span>
-          </label>
-          <label>
-            <input type="radio" name="mode" value="entity" />
-            <span>Entity 级</span>
-          </label>
-        </div>
-        <div class="index-meta">
           <div>
-            <span class="muted">索引状态</span>
-            <strong id="indexStatus">未构建</strong>
+            <div class="panel-kicker">GATES</div>
+            <h2>阈值与参数</h2>
           </div>
-          <div>
-            <span class="muted">向量数</span>
-            <strong id="indexCount">0</strong>
+          <div class="panel-actions">
+            <label class="field inline">
+              <span>Preset</span>
+              <select id="presetSelect">
+                <option value="balanced">Balanced</option>
+                <option value="conservative">Conservative</option>
+                <option value="aggressive">Aggressive</option>
+              </select>
+            </label>
           </div>
         </div>
-        <div class="progress">
-          <div class="progress-bar" id="progressBar"></div>
+
+        <div class="form">
+          <div class="group">
+            <div class="group-title">Recall</div>
+            <label class="field">
+              <span>top_k</span>
+              <input id="topK" type="range" min="1" max="10" step="1" />
+              <div class="field-hint"><code id="topKVal">5</code></div>
+              <div class="field-desc">返回候选数量（Top-K）。调参/排查时建议先开大一点。</div>
+            </label>
+            <label class="field">
+              <span>BM25 topN</span>
+              <input id="bm25TopN" type="number" min="0" max="5000" step="1" />
+              <div class="field-desc">
+                文本字面召回（BM25）取前 N 个候选。适合专有名词、缩写、编号类词（例如“钥匙A-12”）。
+              </div>
+            </label>
+            <label class="field">
+              <span>NN vec topN</span>
+              <input id="nnVecTopN" type="number" min="0" max="5000" step="1" />
+              <div class="field-desc">
+                名词（NN）向量召回取前 N 个候选。用于“名称/类型词”的语义同义（例如“货车≈卡车”）。
+              </div>
+            </label>
+            <label class="field">
+              <span>JJ label topM</span>
+              <input id="jjTopM" type="number" min="0" max="5000" step="1" />
+              <div class="field-desc">
+                形容词（JJ）先检索描述标签向量 Top-M，再把命中的标签反查到物品作为候选（用于补召回）。
+              </div>
+            </label>
+            <label class="field row">
+              <span>enable_bm25</span>
+              <input id="enableBm25" type="checkbox" checked />
+              <div class="field-desc">开启后会同时走 BM25 + 向量混合召回；一般建议开启。</div>
+            </label>
+          </div>
+
+          <div class="group">
+            <div class="group-title">
+              p_spurious（越小越严格）
+              <span class="tag">可校准</span>
+            </div>
+            <div class="grid-2">
+              <label class="field">
+                <span>accept_p_nn</span>
+                <input id="acceptPnn" type="number" min="0" max="1" step="0.001" />
+                <div class="field-desc">
+                  NN 门控的接受阈值：当存在“有效名词”时，要求 Top1 的名词匹配随机误中概率 ≤ 该值才算命中。
+                </div>
+              </label>
+              <label class="field">
+                <span>clarify_p_nn</span>
+                <input id="clarifyPnn" type="number" min="0" max="1" step="0.001" />
+                <div class="field-desc">
+                  NN 门控的澄清阈值：介于 accept 与 clarify 之间时返回候选并提示玩家澄清，而不是直接选中。
+                </div>
+              </label>
+              <label class="field">
+                <span>accept_p_jj</span>
+                <input id="acceptPjj" type="number" min="0" max="1" step="0.0001" />
+                <div class="field-desc">
+                  JJ-only 场景的接受阈值：当名词缺失/是泛化名词（东西/物品）时，要求 JJ 组合匹配更严格。
+                </div>
+              </label>
+              <label class="field">
+                <span>clarify_p_jj</span>
+                <input id="clarifyPjj" type="number" min="0" max="1" step="0.001" />
+                <div class="field-desc">JJ-only 场景的澄清阈值：不够确定就进入澄清，而不是强行匹配。</div>
+              </label>
+            </div>
+            <div class="help">
+              <div class="help-title">解释</div>
+              <div class="help-body">
+                <code>p_spurious</code> 是“随机误匹配概率”：候选越多、越容易误撞，相同相似度会自动
+                更严格。你可以直接设定“允许的误匹配率”。典型形式：<code>p=1-CDF(x)^M</code>（M≈比较次数）。
+              </div>
+            </div>
+          </div>
+
+          <div class="group">
+            <div class="group-title">覆盖与间隔</div>
+            <label class="field">
+              <span>tau_cover</span>
+              <input id="tauCover" type="range" min="0" max="1" step="0.01" />
+              <div class="field-hint"><code id="tauCoverVal">0.35</code></div>
+              <div class="field-desc">
+                覆盖阈值：JJ 匹配到某个描述标签的相似度 ≥ <code>tau_cover</code> 才计入覆盖与得分（避免噪声累计）。
+              </div>
+            </label>
+            <label class="field">
+              <span>min_coverage</span>
+              <input id="minCoverage" type="range" min="0" max="1" step="0.05" />
+              <div class="field-hint"><code id="minCoverageVal">0.50</code></div>
+              <div class="field-desc">当 query 中存在 JJ 时，至少要覆盖（命中）多少比例的 JJ 才能 ACCEPT。</div>
+            </label>
+            <label class="field">
+              <span>min_coverage_no_nn</span>
+              <input id="minCoverageNoNn" type="range" min="0" max="1" step="0.05" />
+              <div class="field-hint"><code id="minCoverageNoNnVal">0.70</code></div>
+              <div class="field-desc">当没有有效名词（只有“红色/破烂/东西”）时的覆盖要求，通常要更高。</div>
+            </label>
+            <label class="field">
+              <span>tau_margin</span>
+              <input id="tauMargin" type="range" min="0" max="1" step="0.01" />
+              <div class="field-hint"><code id="tauMarginVal">0.15</code></div>
+              <div class="field-desc">Top1 与 Top2 的分数间隔要求（越大越不容易“纠缠”）。</div>
+            </label>
+            <label class="field">
+              <span>tau_margin_no_nn</span>
+              <input id="tauMarginNoNn" type="range" min="0" max="1" step="0.01" />
+              <div class="field-hint"><code id="tauMarginNoNnVal">0.20</code></div>
+              <div class="field-desc">无有效名词时的间隔要求，通常更高，避免只靠属性词误选。</div>
+            </label>
+          </div>
         </div>
-        <button id="buildIndex" class="btn primary">构建向量索引</button>
-        <div class="note" id="indexNote">点击构建后即可进行检索。</div>
       </section>
 
-      <section class="panel">
+      <section class="panel span-2" aria-label="Search">
         <div class="panel-head">
-          <h2>Step 3 · 在线检索</h2>
-          <p>输入目标描述 → 生成 query embedding → 相似度搜索</p>
-        </div>
-        <div class="query-box">
-          <label class="field">
-            <span>目标描述</span>
-            <input id="queryInput" type="text" placeholder="red truck / 破损的蓝色车辆" />
-          </label>
-          <div class="slider">
-            <span>Top-K</span>
-            <input id="topK" type="range" min="1" max="5" value="3" />
-            <strong id="topKValue">3</strong>
+          <div>
+            <div class="panel-kicker">SEARCH</div>
+            <h2>自然语言查找</h2>
           </div>
-          <div class="advanced-grid">
-            <label class="field">
-              <span>Recall TopM</span>
-              <input id="topM" type="number" min="1" max="200" value="50" />
+          <div class="panel-actions">
+            <label class="field inline row">
+              <span>debug</span>
+              <input id="debugToggle" type="checkbox" />
             </label>
-            <label class="field">
-              <span>TAU_COVER</span>
-              <input id="tauCover" type="number" min="0" max="1" step="0.01" value="0.30" />
-            </label>
-            <label class="field">
-              <span>TAU_HEAD</span>
-              <input id="tauHead" type="number" min="0" max="1" step="0.01" value="0.35" />
-            </label>
+            <button class="btn primary" id="searchBtn">Search</button>
           </div>
-          <label class="toggle">
-            <input id="enableHeadGate" type="checkbox" checked />
-            启用 head 门控（避免“红色 + 任意物体”）
-          </label>
-          <button id="searchBtn" class="btn primary">执行检索</button>
-          <div class="note" id="searchNote">需要先构建索引。</div>
         </div>
-        <div class="results" id="results"></div>
+
+        <div class="search">
+          <div class="search-bar">
+            <input
+              id="queryInput"
+              type="text"
+              placeholder="例如：破损的蓝色卡车 / 红色的破烂东西 / 帮我找一下铁的钥匙"
+            />
+          </div>
+
+          <div class="decision" id="decisionBox">
+            <div class="decision-left">
+              <div class="pill big" id="decisionPill">
+                <span class="dot" id="decisionDot"></span>
+                <span id="decisionText">—</span>
+              </div>
+              <div class="decision-reason" id="decisionReason">等待检索…</div>
+            </div>
+            <div class="decision-right">
+              <div class="metric">
+                <div class="metric-k">NN</div>
+                <div class="metric-v" id="metricNN">—</div>
+              </div>
+              <div class="metric">
+                <div class="metric-k">JJ</div>
+                <div class="metric-v" id="metricJJ">—</div>
+              </div>
+              <div class="metric">
+                <div class="metric-k">head</div>
+                <div class="metric-v" id="metricHead">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="results">
+            <div class="results-head">
+              <div class="results-title">结果</div>
+              <div class="results-sub">Top1 + alternatives（REJECT 也会展示候选，便于调参）。</div>
+            </div>
+            <div class="cards" id="cards"></div>
+          </div>
+
+          <details class="details" id="details">
+            <summary>
+              <span>Explain</span>
+              <span class="muted">（tokens / POS / match / p_spurious）</span>
+            </summary>
+            <div class="details-body">
+              <div class="columns">
+                <div class="col">
+                  <div class="mini-title">Parsed Tokens</div>
+                  <div class="token-grid" id="tokens"></div>
+                </div>
+                <div class="col">
+                  <div class="mini-title">Best Explain</div>
+                  <pre class="pre" id="explain"></pre>
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
       </section>
     </main>
 
-    <section class="panel wide">
-      <div class="panel-head">
-        <h2>检索日志</h2>
-        <p>展示 query、模式、与相似度 top-k 结果</p>
+    <footer class="foot">
+      <div class="foot-left">
+        <div class="foot-title">Tip</div>
+        <div class="foot-sub">
+          如果你在游戏里有“背包/附近物品列表”，把这些 id 作为 <code>candidate_ids</code> 传入，
+          阈值会更稳定（候选规模更可控）。
+        </div>
       </div>
-      <div class="log" id="log"></div>
-    </section>
+      <div class="foot-right">
+        <div class="foot-title">Shortcuts</div>
+        <div class="kbd-row">
+          <span class="kbd">Enter</span>
+          <span class="kbd-desc">Search</span>
+        </div>
+      </div>
+    </footer>
 
     <script src="app.js"></script>
   </body>

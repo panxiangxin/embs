@@ -1,5 +1,8 @@
 fastapi
 uvicorn[standard]
+hanlp
+transformers<5
 sentence-transformers
 torch
 numpy
+jieba
