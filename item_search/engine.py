@@ -367,7 +367,7 @@ class ItemSearchEngine:
         jj_vecs = self._embedder.embed(jjs) if jjs else np.zeros((0, 0), np.float32)
 
         # Recall candidates
-        cand_pos: set[int] = set()
+        cand_pos: set[int] = set(allowed_pos) if allowed_pos is not None else set()
 
         # NN recall: BM25
         bm25_scores: list[float] | None = None
@@ -378,38 +378,34 @@ class ItemSearchEngine:
             for n in valid_nns:
                 q_tokens.extend([t for t in jieba.cut(n) if t.strip()])
             bm25_scores = idx.bm25.score_all(q_tokens)
-            top = BM25Index.topn(bm25_scores, cfg.recall_topn_bm25)
-            for doc_idx, _ in top:
-                if allowed_pos is None or doc_idx in allowed_pos:
+            if allowed_pos is None:
+                top = BM25Index.topn(bm25_scores, cfg.recall_topn_bm25)
+                for doc_idx, _ in top:
                     cand_pos.add(doc_idx)
 
-        # NN recall: name vector (aggregated per item)
-        if valid_nns and idx.item_name_vector.size:
-            # Use max over nn phrases
-            sims = []
-            for qv in nn_vecs:
-                sims.append(_cos_sim_matrix(idx.item_name_vector, qv))
-            sim_mat = np.stack(sims, axis=1) if sims else np.zeros((len(idx.items), 0), np.float32)
-            nn_best = sim_mat.max(axis=1) if sim_mat.size else np.zeros((len(idx.items),), np.float32)
-            top_items = _topk_indices(nn_best, cfg.recall_topn_name_vec)
-            if allowed_pos is None:
+        if allowed_pos is None:
+            # NN recall: name vector (aggregated per item)
+            if valid_nns and idx.item_name_vector.size:
+                # Use max over nn phrases
+                sims = []
+                for qv in nn_vecs:
+                    sims.append(_cos_sim_matrix(idx.item_name_vector, qv))
+                sim_mat = np.stack(sims, axis=1) if sims else np.zeros((len(idx.items), 0), np.float32)
+                nn_best = sim_mat.max(axis=1) if sim_mat.size else np.zeros((len(idx.items),), np.float32)
+                top_items = _topk_indices(nn_best, cfg.recall_topn_name_vec)
                 cand_pos.update(top_items)
-            else:
-                cand_pos.update([p for p in top_items if p in allowed_pos])
 
-        # JJ recall: label vector -> items
-        if jjs and idx.desc_label_vectors.size:
-            for qv in jj_vecs:
-                label_sims = _cos_sim_matrix(idx.desc_label_vectors, qv)
-                top_labels_idx = _topk_indices(label_sims, cfg.recall_topm_desc_label)
-                for li in top_labels_idx:
-                    label = idx.desc_labels[li]
-                    for item_pos in idx.desc_label_to_items.get(label, ()):
-                        if allowed_pos is None or item_pos in allowed_pos:
-                            cand_pos.add(item_pos)
+            # JJ recall: label vector -> items
+            if jjs and idx.desc_label_vectors.size:
+                for qv in jj_vecs:
+                    label_sims = _cos_sim_matrix(idx.desc_label_vectors, qv)
+                    top_labels_idx = _topk_indices(label_sims, cfg.recall_topm_desc_label)
+                    for li in top_labels_idx:
+                        label = idx.desc_labels[li]
+                        cand_pos.update(idx.desc_label_to_items.get(label, ()))
 
-        if not cand_pos:
-            cand_pos = allowed_pos if allowed_pos is not None else set(range(len(idx.items)))
+            if not cand_pos:
+                cand_pos = set(range(len(idx.items)))
 
         cand_list = sorted(cand_pos)
 
@@ -580,6 +576,8 @@ class ItemSearchEngine:
                 p_prod *= max(1e-12, idx.neg_desc.tail_p_max(sim, m_labels))
             p_jj_top1 = p_prod if any_used else 1.0
 
+        p_spurious_top1 = p_nn_top1 if p_nn_top1 is not None else p_jj_top1
+
         # Coverage from stored per-JJ weights.
         cov_weight_sum = float(sum(float(m.get("w") or 0.0) for m in top1[7])) if has_jj else 0.0
         cov_covered = float(sum(float(m.get("w") or 0.0) for m in top1[7] if float(m.get("used") or 0.0) > 0.0)) if has_jj else 0.0
@@ -697,4 +695,4 @@ class ItemSearchEngine:
             best = None
             alternatives = tuple(out)
 
-        return SearchResult(decision=decision, parsed=parsed, best=best, alternatives=alternatives)
+        return SearchResult(decision=decision, parsed=parsed, best=best, alternatives=alternatives, p_spurious=p_spurious_top1)

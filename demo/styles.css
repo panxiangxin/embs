@@ -187,6 +187,12 @@ code{
   box-shadow: var(--shadow2);
   user-select:none;
 }
+a.btn{
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
 .btn:hover{background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.22)}
 .btn:active{transform: translateY(1px)}
 .btn.primary{

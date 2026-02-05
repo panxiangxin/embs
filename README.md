@@ -3,7 +3,8 @@
 本项目提供：
 
 - `POST /v1/embeddings`：本地向量 API（默认模型 `BAAI/bge-small-zh-v1.5`）
-- `POST /v1/items/load`：加载物品库并构建索引（BM25 + 向量 + 负样本分布）
+- `POST /v1/items/import`：导入/更新物品库（支持 upsert/replace，可选触发重建索引）
+- `POST /v1/index/rebuild`：全量重建索引；`POST /v1/index/refresh`：按 catalog_version 检查并刷新
 - `POST /v1/item_search`：基于 POS（JJ/NN）拆分的物品检索，并输出 `ACCEPT/CLARIFY/REJECT`
 
 ## 1) 一键启动
@@ -30,10 +31,14 @@ Start-Process "http://127.0.0.1:8000/demo/"
 Start-Process .\demo\index.html
 ```
 
+物品管理页面（列表页 CRUD）：`http://127.0.0.1:8000/demo/types.html`
+
+类型批量工具（重命名/合并/移除 `type` 并回写）：`http://127.0.0.1:8000/demo/type_studio.html`
+
 ## 2) 加载示例物品库
 
 ```powershell
-curl.exe -X POST "http://127.0.0.1:8000/v1/items/load" `
+curl.exe -X POST "http://127.0.0.1:8000/v1/items/import?rebuild=true&mode=replace" `
   -H "Content-Type: application/json" `
   --data-binary "@data/items_sample.json"
 ```

@@ -1,5 +1,6 @@
 const STORAGE = {
   apiBase: "item-finder::apiBase",
+  apiKey: "item-finder::apiKey",
   itemsJson: "item-finder::itemsJson",
   selectedIds: "item-finder::selectedIds",
   contextMode: "item-finder::contextMode",
@@ -187,6 +188,7 @@ const PRESETS = {
 const $ = (id) => document.getElementById(id);
 
 const apiBaseEl = $("apiBase");
+const apiKeyEl = $("apiKey");
 const pingBtn = $("pingBtn");
 const apiPill = $("apiPill");
 const apiDot = $("apiDot");
@@ -528,25 +530,32 @@ async function ping() {
 async function loadToApi() {
   const base = apiBaseEl.value.trim();
   if (!base) return;
+  const apiKey = apiKeyEl?.value?.trim?.() || "";
   const parsed = parseItemsFromTextarea();
   if (!parsed.ok) {
     setNote("bad", `JSON 错误：<code>${escapeHtml(parsed.error)}</code>`);
     return;
   }
 
-  setNote("ok", "正在加载索引…（首次会下载模型/建立词典）");
+  setNote("ok", "正在导入并重建索引…（首次会下载模型/建立词典）");
   loadBtn.disabled = true;
   try {
-    const resp = await fetch(apiUrl(base, "/v1/items/load"), {
+    const resp = await fetch(apiUrl(base, "/v1/items/import?rebuild=true&mode=replace"), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(apiKey ? { "x-api-key": apiKey } : {}) },
       body: JSON.stringify(parsed.payload),
     });
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok) throw new Error(data?.detail || resp.statusText);
+    const r = data?.result || {};
+    const idx = data?.index || {};
+    const op =
+      r.replaced != null
+        ? `replaced=<code>${r.replaced}</code>`
+        : `created=<code>${r.created ?? 0}</code> · updated=<code>${r.updated ?? 0}</code>`;
     setNote(
       "ok",
-      `已加载：items=<code>${data.item_count}</code> · name_phrases=<code>${data.name_phrase_count}</code> · desc_labels=<code>${data.desc_label_count}</code> · neg_name=<code>${data.neg_name_samples}</code> · neg_desc=<code>${data.neg_desc_samples}</code>`
+      `已导入：${op} · indexed_items=<code>${idx.item_count ?? "—"}</code> · name_phrases=<code>${idx.name_phrase_count ?? "—"}</code> · desc_labels=<code>${idx.desc_label_count ?? "—"}</code> · neg_name=<code>${idx.neg_name_samples ?? "—"}</code> · neg_desc=<code>${idx.neg_desc_samples ?? "—"}</code>`
     );
     state.parsedPayload = parsed.payload;
     saveStorage(STORAGE.itemsJson, itemsJsonEl.value);
@@ -748,6 +757,7 @@ function syncFromTextarea({ silent } = { silent: false }) {
 function init() {
   const base = loadStorage(STORAGE.apiBase, "http://127.0.0.1:8000");
   apiBaseEl.value = base;
+  if (apiKeyEl) apiKeyEl.value = loadStorage(STORAGE.apiKey, "");
 
   const savedItems = loadStorage(STORAGE.itemsJson, "");
   if (savedItems) itemsJsonEl.value = savedItems;
@@ -875,6 +885,12 @@ apiBaseEl.addEventListener("change", () => {
   saveStorage(STORAGE.apiBase, apiBaseEl.value.trim());
   ping();
 });
+
+if (apiKeyEl) {
+  apiKeyEl.addEventListener("change", () => {
+    saveStorage(STORAGE.apiKey, apiKeyEl.value);
+  });
+}
 
 posBackendEl.addEventListener("change", () => {
   saveStorage(STORAGE.posBackend, String(posBackendEl.value || "jieba"));

@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="物品管理列表页：通过 CRUD 管理 embs 物品库，并可选刷新索引。" />
+    <title>Catalog · Items</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&family=ZCOOL+QingKe+HuangYou&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="types.css" />
+  </head>
+  <body>
+    <div class="fx fx-grid" aria-hidden="true"></div>
+    <div class="fx fx-grain" aria-hidden="true"></div>
+
+    <header class="top">
+      <div class="brand">
+        <div class="mark" aria-hidden="true">
+          <div class="mark-core"></div>
+          <div class="mark-ring"></div>
+        </div>
+        <div class="brand-text">
+          <div class="kicker">CATALOG / CRUD</div>
+          <h1>Catalog</h1>
+          <div class="sub">
+            列表页管理物品 <span class="sep">·</span> <code>/v1/items</code> CRUD
+            <span class="sep">·</span> 可选 <code>/v1/index/refresh</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="api">
+        <a class="btn ghost" href="./">Finder</a>
+        <a class="btn ghost" href="type_studio.html">Type Studio</a>
+        <label class="field inline">
+          <span>API Base</span>
+          <input id="apiBase" type="text" spellcheck="false" value="http://127.0.0.1:8000" />
+        </label>
+        <label class="field inline key">
+          <span>API Key</span>
+          <input id="apiKey" type="password" spellcheck="false" placeholder="(optional)" />
+        </label>
+        <button class="btn" id="pingBtn">Ping</button>
+        <div class="pill" id="apiPill">
+          <span class="dot" id="apiDot"></span>
+          <span id="apiText">offline</span>
+        </div>
+        <div class="pill" id="idxPill" title="catalog_version / index_catalog_version">
+          <span class="dot" id="idxDot"></span>
+          <span id="idxText">index —</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="grid catalog-grid">
+      <section class="panel span-2" aria-label="Items list">
+        <div class="panel-head">
+          <div>
+            <div class="panel-kicker">ITEMS</div>
+            <h2>物品列表</h2>
+          </div>
+          <div class="panel-actions">
+            <button class="btn ghost" id="reloadBtn">Reload</button>
+            <button class="btn" id="newBtn">New</button>
+            <button class="btn ghost" id="exportBtn">Export</button>
+            <label class="btn ghost">
+              Import
+              <input id="importFile" type="file" accept="application/json,application/x-ndjson,text/plain" hidden />
+            </label>
+            <button class="btn primary" id="refreshIndexBtn">Refresh Index</button>
+          </div>
+        </div>
+
+        <div class="catalog-body">
+          <div class="toolbar">
+            <label class="field">
+              <span>Keyword</span>
+              <input id="keyword" type="text" spellcheck="false" placeholder="搜索 item_id / name" />
+            </label>
+            <label class="field">
+              <span>Status</span>
+              <select id="status">
+                <option value="">All</option>
+                <option value="active">Active</option>
+                <option value="disabled">Disabled</option>
+                <option value="deleted">Deleted</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Page size</span>
+              <select id="limit">
+                <option value="20">20</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+              </select>
+            </label>
+            <div class="pill mini">
+              <span class="dot ok" id="dataDot"></span>
+              <span id="dataText">未加载</span>
+            </div>
+          </div>
+
+          <div class="table">
+            <div class="table-head">
+              <div class="th">ID</div>
+              <div class="th">Name</div>
+              <div class="th">Type</div>
+              <div class="th">Status</div>
+              <div class="th right">Updated</div>
+            </div>
+            <div class="table-body" id="itemsList"></div>
+          </div>
+
+          <div class="pager">
+            <div class="pager-left">
+              <button class="btn tiny ghost" id="prevBtn">Prev</button>
+              <button class="btn tiny ghost" id="nextBtn">Next</button>
+              <button class="btn tiny" id="jumpTopBtn">Top</button>
+            </div>
+            <div class="pager-right">
+              <span class="mono" id="pageText">—</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Item editor">
+        <div class="panel-head">
+          <div>
+            <div class="panel-kicker">EDITOR</div>
+            <h2>编辑/创建</h2>
+          </div>
+          <div class="panel-actions">
+            <div class="pill mini" id="modePill">
+              <span class="dot" id="modeDot"></span>
+              <span id="modeText">—</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form">
+          <div class="group">
+            <div class="group-title">
+              <span class="tag">ITEM</span>
+              <span>基础信息</span>
+            </div>
+            <label class="field">
+              <span>item_id</span>
+              <input id="itemId" type="text" spellcheck="false" placeholder="例如：veh-01" />
+              <div class="field-desc">创建时必填；编辑时不可修改。</div>
+            </label>
+            <label class="field">
+              <span>name</span>
+              <input id="itemName" type="text" spellcheck="false" placeholder="例如：蓝色卡车" />
+            </label>
+            <label class="field">
+              <span>status</span>
+              <select id="itemStatus">
+                <option value="active">active</option>
+                <option value="disabled">disabled</option>
+              </select>
+              <div class="field-desc">删除请使用下方 Delete（软删）。</div>
+            </label>
+          </div>
+
+          <div class="group">
+            <div class="group-title">
+              <span class="tag">TAGS</span>
+              <span>type / aliases / desc_labels</span>
+            </div>
+            <label class="field">
+              <span>type</span>
+              <textarea id="itemType" class="textarea small" spellcheck="false" placeholder="每行一个；也支持逗号/顿号分隔"></textarea>
+            </label>
+            <label class="field">
+              <span>aliases</span>
+              <textarea id="itemAliases" class="textarea small" spellcheck="false" placeholder="可选：别名"></textarea>
+            </label>
+            <label class="field">
+              <span>desc_labels</span>
+              <textarea id="itemLabels" class="textarea small" spellcheck="false" placeholder="例如：破损 / 蓝色 / 金属"></textarea>
+            </label>
+          </div>
+
+          <div class="group">
+            <div class="group-title">
+              <span class="tag">ATTRS</span>
+              <span>attrs（JSON）</span>
+            </div>
+            <label class="field">
+              <span>attrs</span>
+              <textarea id="itemAttrs" class="textarea small" spellcheck="false" placeholder="{\n  \"color\": \"blue\"\n}"></textarea>
+              <div class="field-desc">必须是 JSON object；为空则写入空对象。</div>
+            </label>
+            <div class="row-actions">
+              <button class="btn tiny ghost" id="formatAttrsBtn">Format</button>
+              <button class="btn tiny ghost" id="copyJsonBtn">Copy JSON</button>
+            </div>
+          </div>
+
+          <div class="group">
+            <div class="group-title">
+              <span class="tag">ACTIONS</span>
+              <span>写入 API</span>
+            </div>
+            <div class="actions">
+              <button class="btn primary" id="saveBtn">Save</button>
+              <button class="btn" id="disableBtn">Disable</button>
+              <button class="btn" id="restoreBtn">Restore</button>
+              <button class="btn danger" id="deleteBtn">Delete</button>
+            </div>
+            <div class="help">
+              <div class="help-title">Note</div>
+              <div class="help-body">
+                写操作需要 API Key（若服务端配置了 <code>ADMIN_API_KEY</code>）。保存后建议点一次
+                <code>Refresh Index</code> 让检索端更新索引。
+              </div>
+            </div>
+          </div>
+
+          <div class="group">
+            <div class="group-title">
+              <span class="tag">LOG</span>
+              <span>输出</span>
+            </div>
+            <pre class="pre" id="log"></pre>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="types.js"></script>
+  </body>
+</html>
+

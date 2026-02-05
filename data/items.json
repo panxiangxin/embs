@@ -1,0 +1,45 @@
+{
+  "meta": {
+    "catalog_version": 3,
+    "updated_at_ms": 1770276294125
+  },
+  "items": [
+    {
+      "item_id": "car-1",
+      "name": "蓝色卡车",
+      "type": [
+        "车",
+        "汽车",
+        "卡车"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "蓝色",
+        "破损",
+        "大型"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 2,
+      "updated_at_ms": 1770276294125
+    },
+    {
+      "item_id": "car-2",
+      "name": "绿色SUV",
+      "type": [
+        "车",
+        "车辆",
+        "SUV",
+        "绿色SUV"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "绿色"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770257256247
+    }
+  ]
+}

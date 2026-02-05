@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="物品类型管理：批量重命名/合并/移除 type，并回写到 embs API。" />
+    <title>Type Studio · Item Types</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&family=ZCOOL+QingKe+HuangYou&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="type_studio.css" />
+  </head>
+  <body>
+    <div class="fx fx-grid" aria-hidden="true"></div>
+    <div class="fx fx-grain" aria-hidden="true"></div>
+
+    <header class="top">
+      <div class="brand">
+        <div class="mark" aria-hidden="true">
+          <div class="mark-core"></div>
+          <div class="mark-ring"></div>
+        </div>
+        <div class="brand-text">
+          <div class="kicker">CATALOG / TAXONOMY</div>
+          <h1>Type Studio</h1>
+          <div class="sub">
+            批量管理 <code>type</code>（重命名 / 合并 / 移除 / 追加）
+            <span class="sep">·</span> 以 <code>import?mode=upsert</code> 回写
+          </div>
+        </div>
+      </div>
+
+      <div class="api">
+        <a class="btn ghost" href="./">Finder</a>
+        <a class="btn ghost" href="types.html">Catalog</a>
+        <label class="field inline">
+          <span>API Base</span>
+          <input id="apiBase" type="text" spellcheck="false" value="http://127.0.0.1:8000" />
+        </label>
+        <label class="field inline key">
+          <span>API Key</span>
+          <input id="apiKey" type="password" spellcheck="false" placeholder="(optional)" />
+        </label>
+        <button class="btn" id="pingBtn">Ping</button>
+        <div class="pill" id="apiPill">
+          <span class="dot" id="apiDot"></span>
+          <span id="apiText">offline</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="grid types-grid">
+      <section class="panel" aria-label="Types">
+        <div class="panel-head">
+          <div>
+            <div class="panel-kicker">TYPES</div>
+            <h2>类型列表</h2>
+          </div>
+          <div class="panel-actions">
+            <button class="btn ghost" id="reloadBtn">Reload</button>
+            <button class="btn ghost" id="resetBtn">Reset</button>
+          </div>
+        </div>
+
+        <div class="types-body">
+          <div class="types-tools">
+            <label class="field">
+              <span>Filter</span>
+              <input id="typeFilter" type="text" spellcheck="false" placeholder="搜索类型（例如：车 / 武器 / watch...）" />
+              <div class="field-desc">支持多选：用复选框勾选多个类型后再合并/移除。</div>
+            </label>
+
+            <div class="grid-2">
+              <label class="field">
+                <span>Sort</span>
+                <select id="sortMode">
+                  <option value="count">By count</option>
+                  <option value="name">By name</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Export status</span>
+                <select id="statusFilter">
+                  <option value="">All</option>
+                  <option value="active">Active</option>
+                  <option value="disabled">Disabled</option>
+                  <option value="deleted">Deleted</option>
+                </select>
+                <div class="field-desc">
+                  写回默认用 <code>upsert</code>，不会删除未导出的物品；如果你想对所有状态生效，请选择 <code>All</code>。
+                </div>
+              </label>
+            </div>
+
+            <div class="pill mini">
+              <span class="dot ok" id="dataDot"></span>
+              <span id="dataText">未加载</span>
+            </div>
+          </div>
+
+          <div class="types-list" id="typesList"></div>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Actions">
+        <div class="panel-head">
+          <div>
+            <div class="panel-kicker">ACTIONS</div>
+            <h2>批量操作</h2>
+          </div>
+          <div class="panel-actions">
+            <button class="btn tiny" id="selectAllTypesBtn">All</button>
+            <button class="btn tiny ghost" id="selectNoneTypesBtn">None</button>
+          </div>
+        </div>
+
+        <div class="form">
+          <div class="segmented" role="tablist" aria-label="Actions">
+            <button class="seg on" id="tabRename" role="tab" aria-selected="true">Rename</button>
+            <button class="seg" id="tabMerge" role="tab" aria-selected="false">Merge</button>
+            <button class="seg" id="tabRemove" role="tab" aria-selected="false">Remove</button>
+            <button class="seg" id="tabAdd" role="tab" aria-selected="false">Add</button>
+          </div>
+
+          <div class="group" id="panelRename">
+            <div class="group-title">
+              <span class="tag">RENAME</span>
+              <span>重命名类型</span>
+            </div>
+            <label class="field">
+              <span>From</span>
+              <input id="renameFrom" type="text" spellcheck="false" placeholder="从左侧选择一个类型，或手动输入" />
+            </label>
+            <label class="field">
+              <span>To</span>
+              <input id="renameTo" type="text" spellcheck="false" placeholder="新类型名（留空=移除）" />
+              <div class="field-desc">会替换所有物品中完全匹配的 <code>type</code> 项，并自动去重。</div>
+            </label>
+            <button class="btn primary" id="renameBtn">Apply to Draft</button>
+            <div class="help">
+              <div class="help-title">Tip</div>
+              <div class="help-body">想“合并到已有类型”？直接把 To 填成目标类型即可。</div>
+            </div>
+          </div>
+
+          <div class="group hidden" id="panelMerge">
+            <div class="group-title">
+              <span class="tag">MERGE</span>
+              <span>合并多个类型</span>
+            </div>
+            <div class="mini">
+              已选类型：<span class="mono" id="mergeFromList">—</span>
+            </div>
+            <label class="field">
+              <span>Target</span>
+              <input id="mergeTo" type="text" spellcheck="false" placeholder="目标类型（例如：车辆）" />
+              <div class="field-desc">把所有“已选类型”统一替换为 Target，并去重。</div>
+            </label>
+            <button class="btn primary" id="mergeBtn">Apply to Draft</button>
+          </div>
+
+          <div class="group hidden" id="panelRemove">
+            <div class="group-title">
+              <span class="tag" style="border-color: rgba(255,77,141,.24); color: rgba(255,77,141,.92); background: rgba(255,77,141,.08)"
+                >REMOVE</span
+              >
+              <span>移除类型</span>
+            </div>
+            <div class="mini">
+              将从所有物品中移除：<span class="mono" id="removeList">—</span>
+            </div>
+            <button class="btn danger" id="removeBtn">Remove from Draft</button>
+            <div class="help">
+              <div class="help-title">Safe by default</div>
+              <div class="help-body">只修改 Draft，不会立即写入 API；写入前会展示“将要 upsert 的物品数量”。</div>
+            </div>
+          </div>
+
+          <div class="group hidden" id="panelAdd">
+            <div class="group-title">
+              <span class="tag">ADD</span>
+              <span>给物品追加类型</span>
+            </div>
+            <label class="field">
+              <span>Type</span>
+              <input id="addType" type="text" spellcheck="false" placeholder="要追加的类型（例如：车辆）" />
+            </label>
+            <label class="field">
+              <span>Item keyword</span>
+              <input id="addKeyword" type="text" spellcheck="false" placeholder="可选：按物品 id/name 过滤（留空=全量）" />
+            </label>
+            <label class="field row">
+              <span>Scope</span>
+              <label class="toggle">
+                <input id="addScopeSelected" type="checkbox" checked />
+                <span>仅作用于“已选类型”的物品</span>
+              </label>
+            </label>
+            <button class="btn primary" id="addBtn">Apply to Draft</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Preview and apply">
+        <div class="panel-head">
+          <div>
+            <div class="panel-kicker">PREVIEW</div>
+            <h2>预览与写回</h2>
+          </div>
+          <div class="panel-actions">
+            <label class="field inline row">
+              <span>Rebuild</span>
+              <input id="rebuildToggle" type="checkbox" checked />
+            </label>
+            <button class="btn" id="downloadPatchBtn">Download Patch</button>
+            <button class="btn primary" id="applyBtn">Upsert to API</button>
+          </div>
+        </div>
+
+        <div class="form">
+          <div class="group">
+            <div class="group-title">
+              <span class="tag">FOCUS</span>
+              <span>当前选中</span>
+            </div>
+            <div class="focus">
+              <div class="focus-row">
+                <div class="focus-k">Active</div>
+                <div class="focus-v mono" id="activeTypeText">—</div>
+              </div>
+              <div class="focus-row">
+                <div class="focus-k">Selected</div>
+                <div class="focus-v mono" id="selectedTypesText">—</div>
+              </div>
+              <div class="focus-row">
+                <div class="focus-k">Stats</div>
+                <div class="focus-v" id="statsText">—</div>
+              </div>
+            </div>
+            <div class="mini-title" style="margin-top: 10px">Items (sample)</div>
+            <div class="items-sample" id="itemsSample"></div>
+          </div>
+
+          <div class="group">
+            <div class="group-title">
+              <span class="tag">CHANGES</span>
+              <span>将要写回的变更</span>
+            </div>
+            <div class="changes">
+              <div class="changes-row">
+                <div class="changes-k">Changed items</div>
+                <div class="changes-v mono" id="changedCount">0</div>
+              </div>
+              <div class="changes-row">
+                <div class="changes-k">Catalog version</div>
+                <div class="changes-v mono" id="catalogVersion">—</div>
+              </div>
+              <div class="changes-row">
+                <div class="changes-k">Index</div>
+                <div class="changes-v mono" id="indexVersion">—</div>
+              </div>
+            </div>
+            <div class="help">
+              <div class="help-title">Write strategy</div>
+              <div class="help-body">
+                使用 <code>/v1/items/import?mode=upsert</code> 只更新“有变化的物品”。勾选 <code>Rebuild</code> 会在写入后立即重建索引。
+              </div>
+            </div>
+          </div>
+
+          <div class="group">
+            <div class="group-title">
+              <span class="tag">LOG</span>
+              <span>输出</span>
+            </div>
+            <pre class="pre" id="log"></pre>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="type_studio.js"></script>
+  </body>
+</html>

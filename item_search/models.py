@@ -124,6 +124,8 @@ class SearchResult:
     parsed: ParsedQuery
     best: ScoredItem | None
     alternatives: tuple[ScoredItem, ...] = ()
+    # Spurious-match probability for Top1 when available (NN gate prefers p_nn, JJ-only gate prefers p_jj).
+    p_spurious: float | None = None
 
 
 @dataclass(frozen=True)
