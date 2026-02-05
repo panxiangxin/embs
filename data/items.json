@@ -1,45 +1,506 @@
 {
   "meta": {
-    "catalog_version": 3,
-    "updated_at_ms": 1770276294125
+    "catalog_version": 43,
+    "updated_at_ms": 1770285264395
   },
   "items": [
     {
-      "item_id": "car-1",
+      "item_id": "veh-01",
       "name": "蓝色卡车",
       "type": [
+        "卡车",
         "车",
         "汽车",
-        "卡车"
+        "货车",
+        "truck"
       ],
       "aliases": [],
       "desc_labels": [
         "蓝色",
         "破损",
-        "大型"
+        "重型",
+        "金属"
       ],
       "attrs": {},
       "status": "active",
-      "version": 2,
-      "updated_at_ms": 1770276294125
+      "version": 1,
+      "updated_at_ms": 1770285264395
     },
     {
-      "item_id": "car-2",
-      "name": "绿色SUV",
+      "item_id": "veh-02",
+      "name": "红色皮卡",
       "type": [
-        "车",
-        "车辆",
-        "SUV",
-        "绿色SUV"
+        "皮卡",
+        "小卡车",
+        "pickup",
+        "卡车"
       ],
       "aliases": [],
       "desc_labels": [
+        "红色",
+        "轻型",
+        "金属",
+        "完好"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "str-01",
+      "name": "红色房子",
+      "type": [
+        "房子",
+        "建筑",
+        "小屋",
+        "house"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "红色",
+        "木制",
+        "破旧",
+        "小"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "str-02",
+      "name": "铁门",
+      "type": [
+        "门",
+        "大门",
+        "钢门",
+        "door"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "金属",
+        "钢制",
+        "生锈",
+        "破损"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "str-03",
+      "name": "瞭望塔",
+      "type": [
+        "塔",
+        "watchtower"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "木制",
+        "高",
+        "旧"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "key-01",
+      "name": "铁钥匙",
+      "type": [
+        "钥匙",
+        "金属钥匙"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "金属",
+        "铁制",
+        "旧",
+        "小"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "key-02",
+      "name": "铜钥匙",
+      "type": [
+        "钥匙",
+        "黄铜钥匙"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "金属",
+        "铜制",
+        "新",
+        "小"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "wpn-01",
+      "name": "铁剑",
+      "type": [
+        "武器",
+        "剑",
+        "长剑"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "金属",
+        "铁制",
+        "锋利",
+        "旧"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "wpn-02",
+      "name": "木弓",
+      "type": [
+        "武器",
+        "弓",
+        "弓箭"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "木制",
+        "轻",
+        "完好"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "itm-01",
+      "name": "小型医疗包",
+      "type": [
+        "医疗",
+        "医疗包",
+        "急救包"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "小",
+        "新",
+        "布制"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "ptn-01",
+      "name": "绿色药水",
+      "type": [
+        "药水",
+        "恢复药水"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "绿色",
+        "小瓶",
+        "玻璃"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "box-01",
+      "name": "木箱",
+      "type": [
+        "箱子",
+        "储物箱"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "木制",
+        "破损",
+        "大"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "box-02",
+      "name": "金属箱",
+      "type": [
+        "箱子",
+        "军用箱"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "金属",
+        "重",
+        "完好",
+        "大"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "mat-01",
+      "name": "木板",
+      "type": [
+        "材料",
+        "木材",
+        "木头"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "木制",
+        "长",
+        "轻"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "mat-02",
+      "name": "铁锭",
+      "type": [
+        "材料",
+        "铁块",
+        "金属块"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "金属",
+        "铁制",
+        "重"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "house_default",
+      "name": "房子",
+      "type": [
+        "房子",
+        "房屋",
+        "住宅",
+        "屋子"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "坚固",
+        "美观"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "lake_default",
+      "name": "湖",
+      "type": [
+        "湖",
+        "湖泊"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "圆形",
         "绿色"
       ],
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770257256247
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "river_default",
+      "name": "河",
+      "type": [
+        "河",
+        "河流",
+        "溪流"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "弯曲",
+        "水质好"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "room_default",
+      "name": "房间",
+      "type": [
+        "房间",
+        "屋里"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "杂乱",
+        "空气臭"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "forest_default",
+      "name": "森林",
+      "type": [
+        "森林",
+        "树林",
+        "林子"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "茂密",
+        "范围大"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "enemy_default",
+      "name": "敌人",
+      "type": [
+        "敌人",
+        "怪物"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "持枪"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "enemy_red",
+      "name": "红色敌人",
+      "type": [
+        "敌人",
+        "怪物"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "红色"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "enemy_blue",
+      "name": "蓝色敌人",
+      "type": [
+        "敌人",
+        "怪物"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "蓝色"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "cabin_default",
+      "name": "小屋",
+      "type": [
+        "小屋",
+        "小房子"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "简陋",
+        "木制",
+        "空间小"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "barrel_default",
+      "name": "油桶",
+      "type": [
+        "桶",
+        "油桶"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "装满汽油",
+        "铁制"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "car_jeep_red",
+      "name": "红色吉普车",
+      "type": [
+        "车",
+        "吉普车"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "红色",
+        "新车"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
+    },
+    {
+      "item_id": "car_jeep_blue",
+      "name": "蓝色吉普车",
+      "type": [
+        "车",
+        "吉普车"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "蓝色",
+        "略微破旧"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770285264395
     }
   ]
 }

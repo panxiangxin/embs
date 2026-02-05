@@ -327,6 +327,9 @@ class ItemSearchEngine:
         parsed = self.parse(req.query, pos_backend=req.pos_backend, heuristics=cfg.heuristics)
         valid_nns = [n for n in parsed.nn if not self._normalizer.is_generic_noun(n)]
         jjs = list(parsed.jj)
+        jj_terms = list(jjs)
+        if jj_terms and parsed.head_noun and parsed.head_noun not in jj_terms:
+            jj_terms.append(parsed.head_noun)
         if not valid_nns and not jjs:
             decision = SearchDecision(status="REJECT", reason="empty_query")
             return SearchResult(decision=decision, parsed=parsed, best=None, alternatives=())
@@ -364,7 +367,7 @@ class ItemSearchEngine:
 
         # Embeddings for query parts
         nn_vecs = self._embedder.embed(valid_nns) if valid_nns else np.zeros((0, 0), np.float32)
-        jj_vecs = self._embedder.embed(jjs) if jjs else np.zeros((0, 0), np.float32)
+        jj_vecs = self._embedder.embed(jj_terms) if jj_terms else np.zeros((0, 0), np.float32)
 
         # Recall candidates
         cand_pos: set[int] = set(allowed_pos) if allowed_pos is not None else set()
@@ -396,7 +399,7 @@ class ItemSearchEngine:
                 cand_pos.update(top_items)
 
             # JJ recall: label vector -> items
-            if jjs and idx.desc_label_vectors.size:
+            if jj_terms and idx.desc_label_vectors.size:
                 for qv in jj_vecs:
                     label_sims = _cos_sim_matrix(idx.desc_label_vectors, qv)
                     top_labels_idx = _topk_indices(label_sims, cfg.recall_topm_desc_label)
@@ -491,12 +494,12 @@ class ItemSearchEngine:
             item_labels = [l for l in item.desc_labels if l in idx.desc_label_to_idx]
             label_vecs = (
                 idx.desc_label_vectors[[idx.desc_label_to_idx[l] for l in item_labels]]
-                if (jjs and idx.desc_label_vectors.size and item_labels)
+                if (jj_terms and idx.desc_label_vectors.size and item_labels)
                 else np.zeros((0, 0), np.float32)
             )
 
-            if jjs:
-                for j_idx, j in enumerate(jjs):
+            if jj_terms:
+                for j_idx, j in enumerate(jj_terms):
                     qv = jj_vecs[j_idx]
                     w = float(idx.desc_idf.get(j, 1.0)) * float(self._normalizer.type_coef(j))
                     jj_weight_sum += w

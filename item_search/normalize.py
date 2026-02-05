@@ -136,4 +136,5 @@ class Normalizer:
         return self.norm(text) in self.generic_nouns
 
     def type_coef(self, label: str) -> float:
-        return 0.2 if self.norm(label) in self.color_labels else 1.0
+        # Changed to 1.0 to fully weight color matches (was 0.2)
+        return 1.0 if self.norm(label) in self.color_labels else 1.0
