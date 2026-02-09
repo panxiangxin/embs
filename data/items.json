@@ -1,7 +1,7 @@
 {
   "meta": {
-    "catalog_version": 43,
-    "updated_at_ms": 1770285264395
+    "catalog_version": 50,
+    "updated_at_ms": 1770344304754
   },
   "items": [
     {
@@ -24,7 +24,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "veh-02",
@@ -45,7 +45,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "str-01",
@@ -66,7 +66,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "str-02",
@@ -87,7 +87,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "str-03",
@@ -105,7 +105,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "key-01",
@@ -124,7 +124,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "key-02",
@@ -143,7 +143,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "wpn-01",
@@ -163,7 +163,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "wpn-02",
@@ -182,7 +182,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "itm-01",
@@ -201,7 +201,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "ptn-01",
@@ -219,7 +219,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "box-01",
@@ -237,7 +237,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "box-02",
@@ -256,7 +256,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "mat-01",
@@ -275,7 +275,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "mat-02",
@@ -294,7 +294,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "house_default",
@@ -302,8 +302,8 @@
       "type": [
         "房子",
         "房屋",
-        "住宅",
-        "屋子"
+        "建筑",
+        "大房子"
       ],
       "aliases": [],
       "desc_labels": [
@@ -313,7 +313,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "lake_default",
@@ -330,7 +330,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "river_default",
@@ -348,7 +348,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "room_default",
@@ -365,7 +365,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "forest_default",
@@ -383,7 +383,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "enemy_default",
@@ -399,7 +399,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "enemy_red",
@@ -415,7 +415,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "enemy_blue",
@@ -431,7 +431,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "cabin_default",
@@ -449,7 +449,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "barrel_default",
@@ -466,7 +466,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "car_jeep_red",
@@ -483,7 +483,7 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
     },
     {
       "item_id": "car_jeep_blue",
@@ -500,7 +500,41 @@
       "attrs": {},
       "status": "active",
       "version": 1,
-      "updated_at_ms": 1770285264395
+      "updated_at_ms": 1770344304754
+    },
+    {
+      "item_id": "bridge_default",
+      "name": "桥",
+      "type": [
+        "桥",
+        "铁桥"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "黑色",
+        "略微破旧"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770344304754
+    },
+    {
+      "item_id": "tree_default",
+      "name": "树",
+      "type": [
+        "树",
+        "植物"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "绿色",
+        "大树"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1770344304754
     }
   ]
 }
