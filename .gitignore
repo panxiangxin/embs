@@ -2,20 +2,46 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+*.pyd
 
 # Virtual Environment
 .venv/
 venv/
 ENV/
 env/
+.venv*/
 
 # Environment variables
 .env
+.env.*
 
 # IDEs
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+
+# Logs
+*.log
+logs/
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Model caches
+model_cache/
+huggingface_cache/

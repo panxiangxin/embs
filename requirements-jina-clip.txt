@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pydantic
+pillow
+requests
+torch>=2.0.0
+transformers>=4.36.0
+einops
+timm
