@@ -1,7 +1,7 @@
 {
   "meta": {
-    "catalog_version": 138,
-    "updated_at_ms": 1774926876448
+    "catalog_version": 144,
+    "updated_at_ms": 1777364918664
   },
   "items": [
     {
@@ -1190,6 +1190,125 @@
       "status": "active",
       "version": 1,
       "updated_at_ms": 1774598599039
+    },
+    {
+      "item_id": "tree_default",
+      "name": "绿树",
+      "type": [
+        "树",
+        "树木",
+        "大树",
+        "绿树"
+      ],
+      "aliases": [
+        "大树"
+      ],
+      "desc_labels": [
+        "大",
+        "绿色"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1776931472310
+    },
+    {
+      "item_id": "recyclable_barrel",
+      "name": "废弃油桶",
+      "type": [
+        "废桶",
+        "油桶",
+        "破桶"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "破损",
+        "红色",
+        "中等"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1777109160192
+    },
+    {
+      "item_id": "gravity_attached_box",
+      "name": "引力箱",
+      "type": [
+        "引力桶",
+        "引力箱",
+        "桶",
+        "桶子",
+        "箱",
+        "箱子"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "红色"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1777282125004
+    },
+    {
+      "item_id": "gravity_display_box_yellow",
+      "name": "黄色引力箱",
+      "type": [
+        "引力桶",
+        "引力箱",
+        "桶",
+        "桶子",
+        "箱",
+        "箱子"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "黄色"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1777282316675
+    },
+    {
+      "item_id": "gravity_display_box_blue",
+      "name": "蓝色引力箱",
+      "type": [
+        "引力桶",
+        "引力箱",
+        "桶",
+        "桶子",
+        "箱",
+        "箱子"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "蓝色"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1777282349714
+    },
+    {
+      "item_id": "gravity_light",
+      "name": "引力灯",
+      "type": [
+        "引力灯",
+        "灯",
+        "圆灯"
+      ],
+      "aliases": [],
+      "desc_labels": [
+        "坚固",
+        "金属",
+        "圆形"
+      ],
+      "attrs": {},
+      "status": "active",
+      "version": 1,
+      "updated_at_ms": 1777364918664
     }
   ]
 }
